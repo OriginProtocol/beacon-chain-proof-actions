@@ -2,8 +2,8 @@ require('dotenv').config();
 const cron = require('node-cron');
 const { exec } = require('child_process');
 const path = require('path');
-const { db } = require('../lib/db');
-const jobs = require('../lib/cron-jobs');
+const { db } = require('../lib/db.js');
+const jobs = require('../lib/cron-jobs.js');
 
 const secondaryPath = path.join(__dirname, '../..', './origin-dollar');
 const contractsPath = path.join(secondaryPath, 'contracts'); // Where Hardhat tasks are ran from

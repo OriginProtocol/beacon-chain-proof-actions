@@ -1,17 +1,33 @@
 version: '3.8'
 services:
-  app:
+  frontend:
     build: .
     ports:
       - '3000:3000'
     depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_BACKEND_URL: http://backend:3001
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../Dockerfile.backend
+    ports:
+      - '3001:3001'
+    depends_on:
       - db
     environment:
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: cron_runs
+      PG_HOST: db
+      PG_PORT: 5432
+      PG_USER: postgres
+      PG_PASSWORD: password
+      PG_DATABASE: cron_runs
+      FRONTEND_URL: http://frontend:3000
+      # Add other environment variables as needed
 
   db:
     image: postgres:14

@@ -1,0 +1,31 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install pnpm and git
+RUN npm install -g pnpm && apk add --no-cache git
+
+# Clone origin-dollar repository
+RUN git clone https://github.com/OriginProtocol/origin-dollar.git origin-dollar
+
+# Copy package files
+COPY backend/package*.json ./
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY backend/src ./src
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+
+# Change ownership of the app directory
+RUN chown -R nextjs:nodejs /app
+
+USER nextjs
+
+EXPOSE 3001
+
+CMD ["pnpm", "start"]

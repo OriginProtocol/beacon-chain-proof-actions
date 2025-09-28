@@ -1,4 +1,3 @@
-
 module.exports = [
   {
   	// names should have no spaces or special characters
@@ -15,4 +14,3 @@ module.exports = [
     command: 'pnpm hardhat snapBalances --network mainnet',
   }
 ];
-

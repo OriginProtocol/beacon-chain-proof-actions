@@ -1,0 +1,27 @@
+{
+  "name": "automated-actions-backend",
+  "version": "0.1.0",
+  "description": "Backend API for automated actions",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "run-cron": "node src/scripts/run-cron.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "pg": "^8.16.3",
+    "ethers": "^6.15.0",
+    "helmet": "^7.1.0",
+    "node-cron": "^4.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["api", "automated", "actions", "backend"],
+  "author": "",
+  "license": "ISC"
+}
