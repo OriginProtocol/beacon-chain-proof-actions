@@ -12,12 +12,11 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
-// Dialog components disabled due to React 19 SSR compatibility issues
-// import Dialog from '@mui/material/Dialog';
-// import DialogTitle from '@mui/material/DialogTitle';
-// import DialogContent from '@mui/material/DialogContent';
-// import IconButton from '@mui/material/IconButton';
-// import CloseIcon from '@mui/icons-material/Close';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
 import Link from '@mui/material/Link';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -46,6 +45,10 @@ export default function Home() {
   // Repository update state
   const [updating, setUpdating] = useState(false);
   const [updateResult, setUpdateResult] = useState(null);
+
+  // Job trigger state
+  const [triggering, setTriggering] = useState(false);
+  const [triggerResult, setTriggerResult] = useState(null);
 
   // Job runs state
   const [runs, setRuns] = useState([]);
@@ -77,9 +80,18 @@ export default function Home() {
       const data = await response.json();
 
       if (response.ok) {
-        setUpdateResult({ success: true, message: data.message, output: data.output });
+        const output = [];
+        if (data.gitOutput) output.push(`Git: ${data.gitOutput}`);
+        if (data.installOutput) output.push(`Install: ${data.installOutput}`);
+        setUpdateResult({
+          success: true,
+          message: data.message,
+          gitOutput: data.gitOutput,
+          installOutput: data.installOutput,
+          installSuccess: data.installSuccess
+        });
       } else {
-        setUpdateResult({ success: false, message: data.error, details: data.details });
+        setUpdateResult({ success: false, message: data.error, details: data.details, gitOutput: data.gitOutput });
       }
       setTimeout(() => {
         setUpdateResult(null);
@@ -91,6 +103,57 @@ export default function Home() {
     }
   };
 
+  // Job trigger handler
+  const handleTriggerJob = async (jobName) => {
+    setTriggering(true);
+    setTriggerResult(null);
+
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const response = await fetch(`${backendUrl}/api/trigger-job`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ jobName }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setTriggerResult({ success: true, message: data.message, job: data.job, output: data.output });
+        // Refresh the runs data to show the new execution
+        fetchRuns();
+      } else {
+        setTriggerResult({ success: false, message: data.error || data.message, details: data.details });
+      }
+    } catch (error) {
+      setTriggerResult({ success: false, message: 'Network error', details: error.message });
+    } finally {
+      setTriggering(false);
+    }
+  };
+
+  async function fetchRuns() {
+    setLoading(true);
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      let url = `${backendUrl}/api/runs?page=${paginationModel.page + 1}&limit=${paginationModel.pageSize}`;
+      if (selectedJobName) {
+        url += `&job_name=${encodeURIComponent(selectedJobName)}`;
+      }
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch');
+      const { runs: data, total: count } = await res.json();
+      setRuns(data.map((run, index) => ({ ...run, id: run.id || index }))); // Ensure unique id
+      setTotal(count);
+    } catch (error) {
+      console.error('Fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+  
   // Fetch wallet info once on mount
   useEffect(() => {
     async function fetchWalletInfo() {
@@ -125,25 +188,6 @@ export default function Home() {
 
   // Fetch runs based on pagination and selected job name
   useEffect(() => {
-    async function fetchRuns() {
-      setLoading(true);
-      try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-        let url = `${backendUrl}/api/runs?page=${paginationModel.page + 1}&limit=${paginationModel.pageSize}`;
-        if (selectedJobName) {
-          url += `&job_name=${encodeURIComponent(selectedJobName)}`;
-        }
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Failed to fetch');
-        const { runs: data, total: count } = await res.json();
-        setRuns(data.map((run, index) => ({ ...run, id: run.id || index }))); // Ensure unique id
-        setTotal(count);
-      } catch (error) {
-        console.error('Fetch error:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchRuns();
   }, [paginationModel, selectedJobName]); // Re-fetch on pagination or selection change
 
@@ -159,6 +203,10 @@ export default function Home() {
     setSelectedRun(run || null);
   };
 
+  const handleCloseModal = () => {
+    setSelectedRun(null);
+  };
+
   return (
     <main style={{ padding: '20px' }}>
       <Typography variant="h4" gutterBottom>
@@ -166,7 +214,7 @@ export default function Home() {
       </Typography>
 
       {/* Repository Management */}
-      <Card sx={{ display: 'flex', flex: 0, gap: 3 }} variant="outlined" style={{ marginBottom: '20px' }}>
+      <Card sx={{ display: 'flex', flex: 0, gap: 3}} variant="outlined" style={{ marginBottom: '20px' }}>
         <CardContent>
           <Typography variant="h5" gutterBottom>Repository Management</Typography>
           <Typography variant="body2" color="textSecondary" gutterBottom>
@@ -186,10 +234,65 @@ export default function Home() {
         {/* Update Result Alert */}
         {updateResult && (
           <Alert
+            sx={{ m: 2 }}
             severity={updateResult.success ? 'success' : 'error'}
           >
             <Typography variant="body1">{updateResult.message}</Typography>
-            {updateResult.output && (
+
+            {updateResult.gitOutput && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Git Pull Output:</Typography>
+                <Box component="pre" sx={{
+                  fontSize: '0.8em',
+                  backgroundColor: '#f5f5f5',
+                  padding: '10px',
+                  borderRadius: '4px',
+                  overflow: 'auto',
+                  maxHeight: '150px'
+                }}>
+                  {updateResult.gitOutput}
+                </Box>
+              </Box>
+            )}
+
+            {updateResult.installOutput && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Dependencies Install ({updateResult.installSuccess ? 'Success' : 'Warning'}):
+                </Typography>
+                <Box component="pre" sx={{
+                  fontSize: '0.8em',
+                  backgroundColor: updateResult.installSuccess ? '#f5f5f5' : '#fff3cd',
+                  padding: '10px',
+                  borderRadius: '4px',
+                  overflow: 'auto',
+                  maxHeight: '150px'
+                }}>
+                  {updateResult.installOutput}
+                </Box>
+              </Box>
+            )}
+            {updateResult.details && (
+              <Typography variant="body2" style={{ marginTop: '10px' }}>
+                Details: {updateResult.details}
+              </Typography>
+            )}
+          </Alert>
+        )}
+
+        {/* Trigger Result Alert */}
+        {triggerResult && (
+          <Alert
+            sx={{ m: 2 }}
+            severity={triggerResult.success ? 'success' : 'error'}
+          >
+            <Typography variant="body1">{triggerResult.message}</Typography>
+            {triggerResult.job && (
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Job: {triggerResult.job.name} - {triggerResult.job.success ? 'Success' : 'Failed'}
+              </Typography>
+            )}
+            {triggerResult.output && triggerResult.output.stdout && (
               <Box component="pre" style={{
                 marginTop: '10px',
                 fontSize: '0.8em',
@@ -197,14 +300,14 @@ export default function Home() {
                 padding: '10px',
                 borderRadius: '4px',
                 overflow: 'auto',
-                maxHeight: '200px'
+                maxHeight: '150px'
               }}>
-                {updateResult.output}
+                {triggerResult.output.stdout}
               </Box>
             )}
-            {updateResult.details && (
+            {triggerResult.details && (
               <Typography variant="body2" style={{ marginTop: '10px' }}>
-                Details: {updateResult.details}
+                Details: {triggerResult.details}
               </Typography>
             )}
           </Alert>
@@ -247,7 +350,7 @@ export default function Home() {
                       selected={selectedJobName === job.name}
                       onClick={() => handleJobNameClick(job.name)}
                     >
-                      <ListItemText primary={`${job.name} (${job.count})`} />
+                      <ListItemText primary={`${job.name}`} />
                     </ListItemButton>
                   </ListItem>
                 ))}
@@ -257,10 +360,24 @@ export default function Home() {
         </Box>
 
         {/* Center DataGrid */}
-        <Box sx={{ flex: 0 }}>
-          <Typography variant="h4" gutterBottom>
-            Job Runs {selectedJobName ? `(Filtered by ${selectedJobName})` : ''}
-          </Typography>
+        <Card variant="outlined" sx={{ flex: 1, p: 4 }}>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Typography variant="h4" gutterBottom>
+              Job Runs {selectedJobName ? `(Filtered by ${selectedJobName})` : ''}
+            </Typography>
+            {selectedJobName && (
+                <Button
+                  variant="outlined"
+                  sx={{ p: 1, mb: 1, mt: -1 }}
+                  size="small"
+                  onClick={() => handleTriggerJob(selectedJobName)}
+                  disabled={triggering}
+                  startIcon={triggering ? <CircularProgress size={16} /> : null}
+                >
+                  {`Run manually`}
+                </Button>
+            )}
+          </Box>
           <DataGrid
             rows={runs}
             columns={[
@@ -282,64 +399,69 @@ export default function Home() {
             onPaginationModelChange={setPaginationModel}
             onRowSelectionModelChange={handleRowSelection}
             checkboxSelection={false}
-            autoHeight
           />
-        </Box>
+        </Card>
 
       {/* Run Details Panel - SSR compatible */}
-        {selectedRun && (
-          <Card variant="outlined" sx={{ mt: 3, p: 2 }}>
-            <Typography variant="h5" gutterBottom>
-              Run Details (ID: {selectedRun.id})
-            </Typography>
-            <Typography><strong>Job Name:</strong> {selectedRun.job_name}</Typography>
-            <Typography><strong>Run Time:</strong> {selectedRun.run_time ? timeAgo(selectedRun.run_time) : ''}</Typography>
-            <Typography><strong>Success:</strong> {selectedRun.success ? "✅" : "❌"}</Typography>
-            <Typography><strong>Command:</strong> {selectedRun.command}</Typography>
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle1" gutterBottom>Stdout</Typography>
-            <Box
-              sx={{
-                maxHeight: 300,
-                overflow: 'auto',
-                whiteSpace: 'pre-wrap',
-                bgcolor: '#000000',
-                color: '#FFFFFF',
-                fontFamily: 'Menlo, Monaco, Courier New, monospace',
-                p: 2,
-                borderRadius: 1,
-                border: '1px solid #333333',
-                fontSize: '0.875rem',
-              }}
-            >
-              {selectedRun.stdout || 'No output'}
-            </Box>
-            <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>Stderr</Typography>
-            <Box
-              sx={{
-                maxHeight: 300,
-                overflow: 'auto',
-                whiteSpace: 'pre-wrap',
-                bgcolor: '#000000',
-                color: '#FF4D4D',
-                fontFamily: 'Menlo, Monaco, Courier New, monospace',
-                p: 2,
-                borderRadius: 1,
-                border: '1px solid #333333',
-                fontSize: '0.875rem',
-              }}
-            >
-              {selectedRun.stderr || 'No error output'}
-            </Box>
-            <Button
-              variant="outlined"
-              onClick={() => setSelectedRun(null)}
-              sx={{ mt: 2 }}
-            >
-              Close Details
-            </Button>
-          </Card>
-        )}
+        {/* Full Screen Modal for Details */}
+      <Dialog
+        open={!!selectedRun}
+        onClose={handleCloseModal}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          Run Details (ID: {selectedRun?.id})
+          <IconButton
+            aria-label="close"
+            onClick={handleCloseModal}
+            sx={{ position: 'absolute', right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography><strong>Job Name:</strong> {selectedRun?.job_name}</Typography>
+          <Typography><strong>Run Time:</strong> {selectedRun?.run_time ? timeAgo(selectedRun.run_time) : ''}</Typography>
+          <Typography><strong>Success:</strong> {selectedRun?.success ? "✅" : "❌"}</Typography>
+          <Typography><strong>Command:</strong> {selectedRun?.command}</Typography>
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="subtitle1" gutterBottom>Stdout</Typography>
+          <Box 
+            sx={{ 
+              maxHeight: 300, 
+              overflow: 'auto', 
+              whiteSpace: 'pre-wrap', 
+              bgcolor: '#000000', // Black background like Terminal
+              color: '#FFFFFF', // White text
+              fontFamily: 'Menlo, Monaco, Courier New, monospace', // Monospaced font
+              p: 2, // Padding for console feel
+              borderRadius: 1,
+              border: '1px solid #333333', // Optional subtle border
+              fontSize: '0.875rem', // Smaller font for authenticity
+            }}
+          >
+            {selectedRun?.stdout || 'No output'}
+          </Box>
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>Stderr</Typography>
+          <Box 
+            sx={{ 
+              maxHeight: 300, 
+              overflow: 'auto', 
+              whiteSpace: 'pre-wrap', 
+              bgcolor: '#000000', 
+              color: '#FF4D4D', // Red for errors (or #FFFFFF for uniform)
+              fontFamily: 'Menlo, Monaco, Courier New, monospace',
+              p: 2, 
+              borderRadius: 1,
+              border: '1px solid #333333',
+              fontSize: '0.875rem',
+            }}
+          >
+            {selectedRun?.stderr || 'No error output'}
+          </Box>
+        </DialogContent>
+      </Dialog>
       </Box>
     </main>
   );

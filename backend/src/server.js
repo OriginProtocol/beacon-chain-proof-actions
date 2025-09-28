@@ -24,6 +24,7 @@ const jobNamesRoutes = require('./routes/job-names.js');
 const runsRoutes = require('./routes/runs.js');
 const walletInfoRoutes = require('./routes/wallet-info.js');
 const updateRepoRoutes = require('./routes/update-repo.js');
+const triggerJobRoutes = require('./routes/trigger-job.js');
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -35,6 +36,7 @@ app.use('/api/job-names', jobNamesRoutes);
 app.use('/api/runs', runsRoutes);
 app.use('/api/wallet-info', walletInfoRoutes);
 app.use('/api/update-repo', updateRepoRoutes);
+app.use('/api/trigger-job', triggerJobRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

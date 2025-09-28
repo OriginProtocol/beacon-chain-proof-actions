@@ -134,33 +134,12 @@ let theme = createTheme({
 // Make fonts responsive
 theme = responsiveFontSizes(theme);
 
-// Dark mode support (optional: toggle based on system preference)
-const darkTheme = createTheme({
-  ...theme,
-  palette: {
-    ...theme.palette,
-    mode: 'dark',
-    primary: {
-      main: '#90CAF9', // Lighter blue for dark mode
-    },
-    background: {
-      default: '#121212',
-      paper: '#1E1E1E',
-    },
-    text: {
-      primary: '#FFFFFF',
-      secondary: '#B0B0B0',
-    },
-  },
-});
+
 
 // Provider component (use media query for dark mode)
 export default function Providers({ children }) {
-  // Optional: Use useMediaQuery for prefers-color-scheme
-  const prefersDarkMode = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
-
   return (
-    <ThemeProvider theme={prefersDarkMode ? darkTheme : theme}>
+    <ThemeProvider theme={theme}>
       <CssBaseline /> {/* Normalize styles */}
       {children}
     </ThemeProvider>
