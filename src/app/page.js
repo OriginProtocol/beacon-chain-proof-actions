@@ -127,6 +127,9 @@ export default function Home() {
       } else {
         setTriggerResult({ success: false, message: data.error || data.message, details: data.details });
       }
+      setTimeout(() => {
+        setTriggerResult(null);
+      }, 6000);
     } catch (error) {
       setTriggerResult({ success: false, message: 'Network error', details: error.message });
     } finally {
