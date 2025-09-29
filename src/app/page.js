@@ -19,6 +19,7 @@ import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
 import Link from '@mui/material/Link';
 import Alert from '@mui/material/Alert';
+import Collapse from '@mui/material/Collapse';
 import CircularProgress from '@mui/material/CircularProgress';
 
 // import { timeAgo } from "../utils/time"; // Temporarily disabled to test
@@ -313,8 +314,44 @@ export default function Home() {
   };
 
   return (
-    <main style={{ padding: '20px' }}>
-      <Typography variant="h4" gutterBottom>
+    <main style={{ padding: '20px', position: 'relative' }}>
+      {/* Alert Overlay */}
+      <Collapse in={!!alert} timeout={{ enter: 500, exit: 300 }}>
+        {alert && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 1000,
+              pt: 2,
+              px: 2,
+              backgroundColor: 'rgba(255, 255, 255, 0)',
+            }}
+          >
+            <Alert
+              sx={{
+                maxWidth: 500,
+                width: '100%',
+                transition: 'all 0.3s ease-in-out',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+              }}
+              severity={alert.success ? 'success' : 'error'}
+            >
+              <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                {alert.title}
+              </Typography>
+              <Typography variant="body1" sx={{ mb: alert.content ? 2 : 0 }}>
+                {alert.message}
+              </Typography>
+              {alert.content}
+            </Alert>
+          </Box>
+        )}
+      </Collapse>
+      
+        <Typography variant="h4" gutterBottom>
         Automated Actions Dashboard
       </Typography>
 
@@ -335,22 +372,6 @@ export default function Home() {
             {updating ? 'Updating...' : 'Update Repository'}
           </Button>
         </CardContent>
-
-        {/* Unified Alert */}
-        {alert && (
-          <Alert
-            sx={{ m: 2 }}
-            severity={alert.success ? 'success' : 'error'}
-          >
-            <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 1 }}>
-              {alert.title}
-            </Typography>
-            <Typography variant="body1" sx={{ mb: alert.content ? 2 : 0 }}>
-              {alert.message}
-            </Typography>
-            {alert.content}
-          </Alert>
-        )}
       </Card>
 
       {/* Job Runs Dashboard */}
