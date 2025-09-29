@@ -8,6 +8,7 @@ const router = express.Router();
 router.post('/', async (req, res) => {
   try {
     const repoPath = path.join(__dirname, '../..', 'origin-dollar');
+    const contractsPath = path.join(repoPath, 'contracts');
 
     // Execute git pull with merge strategy in the origin-dollar directory
     exec('git pull --no-rebase origin master', { cwd: repoPath }, (gitError, gitStdout, gitStderr) => {
@@ -23,7 +24,7 @@ router.post('/', async (req, res) => {
       console.log('Repository updated successfully, now installing dependencies...');
 
       // After successful git pull, run pnpm install
-      exec('pnpm install', { cwd: repoPath }, (installError, installStdout, installStderr) => {
+      exec('pnpm install', { cwd: contractsPath }, (installError, installStdout, installStderr) => {
         const installSuccess = !installError;
 
         console.log('Dependencies installation completed:', installSuccess ? 'Success' : 'Failed');

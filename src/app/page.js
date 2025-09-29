@@ -44,11 +44,12 @@ const timeAgo = (dateString) => {
 export default function Home() {
   // Repository update state
   const [updating, setUpdating] = useState(false);
-  const [updateResult, setUpdateResult] = useState(null);
 
   // Job trigger state
   const [triggering, setTriggering] = useState(false);
-  const [triggerResult, setTriggerResult] = useState(null);
+
+  // Unified alert state
+  const [alert, setAlert] = useState(null);
 
   // Job runs state
   const [runs, setRuns] = useState([]);
@@ -66,7 +67,7 @@ export default function Home() {
   // Repository update handler
   const handleUpdateRepo = async () => {
     setUpdating(true);
-    setUpdateResult(null);
+    setAlert(null);
 
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
@@ -80,24 +81,86 @@ export default function Home() {
       const data = await response.json();
 
       if (response.ok) {
-        const output = [];
-        if (data.gitOutput) output.push(`Git: ${data.gitOutput}`);
-        if (data.installOutput) output.push(`Install: ${data.installOutput}`);
-        setUpdateResult({
-          success: true,
+        // Determine overall success based on both git and install steps
+        const overallSuccess = data.installSuccess !== false; // Allow undefined as success, only fail if explicitly false
+
+        setAlert({
+          title: 'Repository Update',
           message: data.message,
-          gitOutput: data.gitOutput,
-          installOutput: data.installOutput,
-          installSuccess: data.installSuccess
+          success: overallSuccess,
+          content: (
+            <Box>
+              {data.gitOutput && (
+                <Box sx={{ mt: data.installOutput ? 2 : 0 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>Git Pull:</Typography>
+                  <Box component="pre" sx={{
+                    fontSize: '0.8em',
+                    backgroundColor: '#f5f5f5',
+                    padding: '8px',
+                    borderRadius: '4px',
+                    overflow: 'auto',
+                    maxHeight: '120px',
+                    margin: 0
+                  }}>
+                    {data.gitOutput.trim()}
+                  </Box>
+                </Box>
+              )}
+
+              {data.installOutput && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                    Dependencies Install ({data.installSuccess ? 'Success' : 'Warning'}):
+                  </Typography>
+                  <Box component="pre" sx={{
+                    fontSize: '0.8em',
+                    backgroundColor: data.installSuccess ? '#f5f5f5' : '#fff3cd',
+                    padding: '8px',
+                    borderRadius: '4px',
+                    overflow: 'auto',
+                    maxHeight: '120px',
+                    margin: 0
+                  }}>
+                    {data.installOutput.trim()}
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          )
         });
       } else {
-        setUpdateResult({ success: false, message: data.error, details: data.details, gitOutput: data.gitOutput });
+        setAlert({
+          title: 'Repository Update Failed',
+          message: data.error || 'Failed to update repository',
+          success: false,
+          content: data.gitOutput ? (
+            <Box component="pre" sx={{
+              fontSize: '0.8em',
+              backgroundColor: '#f5f5f5',
+              padding: '8px',
+              borderRadius: '4px',
+              overflow: 'auto',
+              maxHeight: '120px',
+              margin: 0
+            }}>
+              {data.gitOutput}
+            </Box>
+          ) : null
+        });
       }
+
       setTimeout(() => {
-        setUpdateResult(null);
-      }, 6000);
+        setAlert(null);
+      }, 8000); // Extended timeout for combined content
     } catch (error) {
-      setUpdateResult({ success: false, message: 'Network error', details: error.message });
+      setAlert({
+        title: 'Repository Update Error',
+        message: 'Network error occurred',
+        success: false,
+        content: (
+          <Typography variant="body2">{error.message}</Typography>
+        )
+      });
     } finally {
       setUpdating(false);
     }
@@ -106,7 +169,7 @@ export default function Home() {
   // Job trigger handler
   const handleTriggerJob = async (jobName) => {
     setTriggering(true);
-    setTriggerResult(null);
+    setAlert(null);
 
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
@@ -121,17 +184,56 @@ export default function Home() {
       const data = await response.json();
 
       if (response.ok) {
-        setTriggerResult({ success: true, message: data.message, job: data.job, output: data.output });
+        setAlert({
+          title: 'Job Execution',
+          message: data.message,
+          success: data.job.success,
+          content: (
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Job: {data.job.name} - {data.job.success ? 'Success' : 'Failed'}
+              </Typography>
+              {data.output && data.output.stdout && (
+                <Box component="pre" sx={{
+                  fontSize: '0.8em',
+                  backgroundColor: '#f5f5f5',
+                  padding: '8px',
+                  borderRadius: '4px',
+                  overflow: 'auto',
+                  maxHeight: '120px',
+                  margin: 0
+                }}>
+                  {data.output.stdout}
+                </Box>
+              )}
+            </Box>
+          )
+        });
         // Refresh the runs data to show the new execution
         fetchRuns();
       } else {
-        setTriggerResult({ success: false, message: data.error || data.message, details: data.details });
+        setAlert({
+          title: 'Job Execution Failed',
+          message: data.error || data.message || 'Failed to execute job',
+          success: false,
+          content: data.details ? (
+            <Typography variant="body2">{data.details}</Typography>
+          ) : null
+        });
       }
+
       setTimeout(() => {
-        setTriggerResult(null);
+        setAlert(null);
       }, 6000);
     } catch (error) {
-      setTriggerResult({ success: false, message: 'Network error', details: error.message });
+      setAlert({
+        title: 'Job Execution Error',
+        message: 'Network error occurred',
+        success: false,
+        content: (
+          <Typography variant="body2">{error.message}</Typography>
+        )
+      });
     } finally {
       setTriggering(false);
     }
@@ -234,85 +336,19 @@ export default function Home() {
           </Button>
         </CardContent>
 
-        {/* Update Result Alert */}
-        {updateResult && (
+        {/* Unified Alert */}
+        {alert && (
           <Alert
             sx={{ m: 2 }}
-            severity={updateResult.success ? 'success' : 'error'}
+            severity={alert.success ? 'success' : 'error'}
           >
-            <Typography variant="body1">{updateResult.message}</Typography>
-
-            {updateResult.gitOutput && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>Git Pull Output:</Typography>
-                <Box component="pre" sx={{
-                  fontSize: '0.8em',
-                  backgroundColor: '#f5f5f5',
-                  padding: '10px',
-                  borderRadius: '4px',
-                  overflow: 'auto',
-                  maxHeight: '150px'
-                }}>
-                  {updateResult.gitOutput}
-                </Box>
-              </Box>
-            )}
-
-            {updateResult.installOutput && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                  Dependencies Install ({updateResult.installSuccess ? 'Success' : 'Warning'}):
-                </Typography>
-                <Box component="pre" sx={{
-                  fontSize: '0.8em',
-                  backgroundColor: updateResult.installSuccess ? '#f5f5f5' : '#fff3cd',
-                  padding: '10px',
-                  borderRadius: '4px',
-                  overflow: 'auto',
-                  maxHeight: '150px'
-                }}>
-                  {updateResult.installOutput}
-                </Box>
-              </Box>
-            )}
-            {updateResult.details && (
-              <Typography variant="body2" style={{ marginTop: '10px' }}>
-                Details: {updateResult.details}
-              </Typography>
-            )}
-          </Alert>
-        )}
-
-        {/* Trigger Result Alert */}
-        {triggerResult && (
-          <Alert
-            sx={{ m: 2 }}
-            severity={triggerResult.success ? 'success' : 'error'}
-          >
-            <Typography variant="body1">{triggerResult.message}</Typography>
-            {triggerResult.job && (
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                Job: {triggerResult.job.name} - {triggerResult.job.success ? 'Success' : 'Failed'}
-              </Typography>
-            )}
-            {triggerResult.output && triggerResult.output.stdout && (
-              <Box component="pre" style={{
-                marginTop: '10px',
-                fontSize: '0.8em',
-                backgroundColor: '#f5f5f5',
-                padding: '10px',
-                borderRadius: '4px',
-                overflow: 'auto',
-                maxHeight: '150px'
-              }}>
-                {triggerResult.output.stdout}
-              </Box>
-            )}
-            {triggerResult.details && (
-              <Typography variant="body2" style={{ marginTop: '10px' }}>
-                Details: {triggerResult.details}
-              </Typography>
-            )}
+            <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 1 }}>
+              {alert.title}
+            </Typography>
+            <Typography variant="body1" sx={{ mb: alert.content ? 2 : 0 }}>
+              {alert.message}
+            </Typography>
+            {alert.content}
           </Alert>
         )}
       </Card>

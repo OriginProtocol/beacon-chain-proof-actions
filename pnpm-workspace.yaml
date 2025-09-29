@@ -1,3 +1,5 @@
 packages:
   - '.'
   - 'backend'
+  - 'backend/origin-dollar'
+  - 'backend/origin-dollar/contracts'
