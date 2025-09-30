@@ -2,40 +2,12 @@ require('dotenv').config();
 
 const { Hono } = require('hono');
 const { cors } = require('hono/cors');
-const { rateLimiter } = require('hono-rate-limiter');
 const { serve } = require('@hono/node-server');
+const { getLastSuccessfulJobs } = require('./lib/db');
 
 const app = new Hono();
 
 const PORT = process.env.PORT || 3001;
-
-// Rate limiters
-const generalLimiter = rateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 200,
-  message: {
-    error: 'Too many requests from this IP, please try again later.',
-    retryAfter: '15 minutes'
-  },
-});
-
-const strictLimiter = rateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 20,
-  message: {
-    error: 'Too many requests from this IP, please try again later.',
-    retryAfter: '15 minutes'
-  },
-});
-
-const healthLimiter = rateLimiter({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 60,
-  message: {
-    error: 'Too many health check requests',
-    retryAfter: '5 minutes'
-  },
-});
 
 // Middleware
 app.use('*', cors({
@@ -43,13 +15,7 @@ app.use('*', cors({
   credentials: true,
 }));
 
-// Rate limiting - temporarily commented out due to compatibility issue
-// app.use('/api/*', generalLimiter);
-// app.use('/api/update-repo/*', strictLimiter);
-// app.use('/api/trigger-job/*', strictLimiter);
-// app.use('/health/*', healthLimiter);
-
-// Import routes (assuming they are now Hono apps)
+// Import routes
 const jobNamesRoutes = require('./routes/job-names.js');
 const runsRoutes = require('./routes/runs.js');
 const walletInfoRoutes = require('./routes/wallet-info.js');
@@ -59,8 +25,11 @@ app.route('/api/job-names', jobNamesRoutes);
 app.route('/api/runs', runsRoutes);
 app.route('/api/wallet-info', walletInfoRoutes);
 
-// Health check endpoint
-app.get('/health', (c) => {
+// Health check endpoint (no rate limiting)
+app.get('/health', async (c) => {
+  const jobIntervals = await getLastSuccessfulJobs();
+  console.log("Job intervals since last successful run:", jobIntervals);
+  
   return c.json({
     status: 'ok',
     timestamp: new Date().toISOString()

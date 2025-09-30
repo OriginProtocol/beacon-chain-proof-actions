@@ -311,7 +311,8 @@ export default function Home() {
                 width: 200, 
                 valueFormatter: (value) => timeAgo(value)
               },
-              { field: 'success', headerName: 'Success', width: 100, valueFormatter: ({ value }) => value ? "✅" : "❌"},
+              { field: 'success', headerName: 'Success', width: 100, valueFormatter: (value) => value ? "✅" : "❌"
+              },
             ]}
             rowCount={total}
             loading={loading}

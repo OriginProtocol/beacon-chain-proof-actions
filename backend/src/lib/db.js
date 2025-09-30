@@ -30,6 +30,22 @@ async function initDb() {
   console.log('Job runs table initialized');
 }
 
+async function getLastSuccessfulJobs() {
+  const jobNamesQuery = `
+    SELECT 
+      job_name, 
+      EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - MAX(run_time)))::INTEGER as seconds_since_last_run
+    FROM job_runs 
+    WHERE success = true 
+    GROUP BY job_name 
+    ORDER BY job_name`;
+  const jobNamesResult = await db.query(jobNamesQuery);
+  return jobNamesResult.rows.map(row => ({ 
+    name: row.job_name, 
+    seconds_since_last_run: parseInt(row.seconds_since_last_run) 
+  }));
+}
+
 initDb().catch(err => console.error('DB init error:', err));
 
-module.exports = { db };
+module.exports = { db, getLastSuccessfulJobs };
