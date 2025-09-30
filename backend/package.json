@@ -10,18 +10,23 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
+    "@hono/node-server": "^1.12.0",
     "dotenv": "^17.2.2",
-    "pg": "^8.16.3",
     "ethers": "^6.15.0",
-    "helmet": "^7.1.0",
-    "node-cron": "^4.2.1"
+    "hono": "^4.6.5",
+    "hono-rate-limiter": "^0.4.2",
+    "node-cron": "^4.2.1",
+    "pg": "^8.16.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
-  "keywords": ["api", "automated", "actions", "backend"],
+  "keywords": [
+    "api",
+    "automated",
+    "actions",
+    "backend"
+  ],
   "author": "",
   "license": "ISC"
 }

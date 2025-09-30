@@ -1,9 +1,9 @@
-const express = require('express');
+const { Hono } = require('hono');
 const { ethers } = require('ethers');
 
-const router = express.Router();
+const router = new Hono();
 
-router.get('/', async (req, res) => {
+router.get('/', async (c) => {
   try {
     const privateKey = process.env.DEPLOYER_PK;
     const providerUrl = process.env.PROVIDER_URL;
@@ -18,12 +18,12 @@ router.get('/', async (req, res) => {
     const address = wallet.address;
     const balanceWei = await provider.getBalance(address);
     const balance = ethers.formatEther(balanceWei);
-    const etherscanLink = `https://etherscan.io/address/${address}`; // Assuming mainnet; adjust for testnets if needed
+    const etherscanLink = `https://etherscan.io/address/${address}`; // Assuming mainnet
 
-    res.json({ address, balance, etherscanLink });
+    return c.json({ address, balance, etherscanLink });
   } catch (error) {
     console.error('Wallet info error:', error);
-    res.status(500).json({ error: 'Failed to fetch wallet info' });
+    return c.json({ error: 'Failed to fetch wallet info' }, 500);
   }
 });
 

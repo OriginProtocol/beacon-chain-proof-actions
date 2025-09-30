@@ -1,17 +1,15 @@
-const express = require('express');
+const { Hono } = require('hono');
 const { db } = require('../lib/db.js');
 
-const router = express.Router();
+const router = new Hono();
 
-router.get('/', async (req, res) => {
+router.get('/', async (c) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const jobName = req.query.job_name || null; // Optional filter
+    const page = parseInt(c.req.query('page')) || 1;
+    const limit = parseInt(c.req.query('limit')) || 10;
+    const jobName = c.req.query('job_name') || null;
     const offset = (page - 1) * limit;
 
-    // Build base query with optional filter
-    let whereClause = '';
     let countQuery = `SELECT COUNT(*) FROM job_runs`;
     let runsQuery = `SELECT * FROM job_runs ORDER BY run_time DESC LIMIT $1 OFFSET $2`;
     let params = [limit, offset];
@@ -22,16 +20,18 @@ router.get('/', async (req, res) => {
       params = [jobName, limit, offset];
     }
 
-    // Fetch total count (filtered if applicable)
+    // Fetch total count
     const countResult = await db.query(countQuery, jobName ? [jobName] : []);
     const total = parseInt(countResult.rows[0].count);
-    const runs = await db.query(runsQuery, params);
 
-    console.log("runs.rows", runs.rows.length);
-    res.json({ runs: runs.rows, total });
+    // Fetch runs
+    const runsResult = await db.query(runsQuery, params);
+
+    console.log("runs.rows", runsResult.rows.length);
+    return c.json({ runs: runsResult.rows, total });
   } catch (error) {
     console.error('API error:', error);
-    res.status(500).json({ error: 'Failed to fetch runs' });
+    return c.json({ error: 'Failed to fetch runs' }, 500);
   }
 });
 

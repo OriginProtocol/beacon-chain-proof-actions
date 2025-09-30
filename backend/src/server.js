@@ -1,58 +1,91 @@
 require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
 
-const app = express();
+const { Hono } = require('hono');
+const { cors } = require('hono/cors');
+const { rateLimiter } = require('hono-rate-limiter');
+const { serve } = require('@hono/node-server');
+
+const app = new Hono();
+
 const PORT = process.env.PORT || 3001;
 
-// Security middleware
-app.use(helmet());
+// Rate limiters
+const generalLimiter = rateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 200,
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: '15 minutes'
+  },
+});
 
-// CORS configuration - allow requests from frontend
-app.use(cors({
+const strictLimiter = rateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 20,
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: '15 minutes'
+  },
+});
+
+const healthLimiter = rateLimiter({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 60,
+  message: {
+    error: 'Too many health check requests',
+    retryAfter: '5 minutes'
+  },
+});
+
+// Middleware
+app.use('*', cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
+  credentials: true,
 }));
 
-// Body parsing middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Rate limiting - temporarily commented out due to compatibility issue
+// app.use('/api/*', generalLimiter);
+// app.use('/api/update-repo/*', strictLimiter);
+// app.use('/api/trigger-job/*', strictLimiter);
+// app.use('/health/*', healthLimiter);
 
-// Import routes
+// Import routes (assuming they are now Hono apps)
 const jobNamesRoutes = require('./routes/job-names.js');
 const runsRoutes = require('./routes/runs.js');
 const walletInfoRoutes = require('./routes/wallet-info.js');
-const updateRepoRoutes = require('./routes/update-repo.js');
-const triggerJobRoutes = require('./routes/trigger-job.js');
+
+// Mount routes
+app.route('/api/job-names', jobNamesRoutes);
+app.route('/api/runs', runsRoutes);
+app.route('/api/wallet-info', walletInfoRoutes);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// API routes
-app.use('/api/job-names', jobNamesRoutes);
-app.use('/api/runs', runsRoutes);
-app.use('/api/wallet-info', walletInfoRoutes);
-app.use('/api/update-repo', updateRepoRoutes);
-app.use('/api/trigger-job', triggerJobRoutes);
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+app.get('/health', (c) => {
+  return c.json({
+    status: 'ok',
+    timestamp: new Date().toISOString()
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+// Error handler
+app.onError((err, c) => {
+  console.error('Server error:', err);
+  return c.json({
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  }, 500);
 });
 
-app.listen(PORT, () => {
+// 404 handler
+app.notFound((c) => {
+  return c.json({ error: 'Route not found' }, 404);
+});
+
+// Start server
+serve({
+  fetch: app.fetch,
+  port: PORT
+}, () => {
   console.log(`Backend server running on port ${PORT}`);
   console.log(`Health check available at http://localhost:${PORT}/health`);
 });

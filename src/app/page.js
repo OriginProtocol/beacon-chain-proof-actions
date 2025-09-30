@@ -43,12 +43,6 @@ const timeAgo = (dateString) => {
 };
 
 export default function Home() {
-  // Repository update state
-  const [updating, setUpdating] = useState(false);
-
-  // Job trigger state
-  const [triggering, setTriggering] = useState(false);
-
   // Unified alert state
   const [alert, setAlert] = useState(null);
 
@@ -65,107 +59,6 @@ export default function Home() {
   const [selectedRun, setSelectedRun] = useState(null); // Selected run details
   const [walletInfo, setWalletInfo] = useState(null); // Wallet info: {address, balance, etherscanLink}
 
-  // Repository update handler
-  const handleUpdateRepo = async () => {
-    setUpdating(true);
-    setAlert(null);
-
-    try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-      const response = await fetch(`${backendUrl}/api/update-repo`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Determine overall success based on both git and install steps
-        const overallSuccess = data.installSuccess !== false; // Allow undefined as success, only fail if explicitly false
-
-        setAlert({
-          title: 'Repository Update',
-          message: data.message,
-          success: overallSuccess,
-          content: (
-            <Box>
-              {data.gitOutput && (
-                <Box sx={{ mt: data.installOutput ? 2 : 0 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>Git Pull:</Typography>
-                  <Box component="pre" sx={{
-                    fontSize: '0.8em',
-                    backgroundColor: '#f5f5f5',
-                    padding: '8px',
-                    borderRadius: '4px',
-                    overflow: 'auto',
-                    maxHeight: '120px',
-                    margin: 0
-                  }}>
-                    {data.gitOutput.trim()}
-                  </Box>
-                </Box>
-              )}
-
-              {data.installOutput && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                    Dependencies Install ({data.installSuccess ? 'Success' : 'Warning'}):
-                  </Typography>
-                  <Box component="pre" sx={{
-                    fontSize: '0.8em',
-                    backgroundColor: data.installSuccess ? '#f5f5f5' : '#fff3cd',
-                    padding: '8px',
-                    borderRadius: '4px',
-                    overflow: 'auto',
-                    maxHeight: '120px',
-                    margin: 0
-                  }}>
-                    {data.installOutput.trim()}
-                  </Box>
-                </Box>
-              )}
-            </Box>
-          )
-        });
-      } else {
-        setAlert({
-          title: 'Repository Update Failed',
-          message: data.error || 'Failed to update repository',
-          success: false,
-          content: data.gitOutput ? (
-            <Box component="pre" sx={{
-              fontSize: '0.8em',
-              backgroundColor: '#f5f5f5',
-              padding: '8px',
-              borderRadius: '4px',
-              overflow: 'auto',
-              maxHeight: '120px',
-              margin: 0
-            }}>
-              {data.gitOutput}
-            </Box>
-          ) : null
-        });
-      }
-
-      setTimeout(() => {
-        setAlert(null);
-      }, 8000); // Extended timeout for combined content
-    } catch (error) {
-      setAlert({
-        title: 'Repository Update Error',
-        message: 'Network error occurred',
-        success: false,
-        content: (
-          <Typography variant="body2">{error.message}</Typography>
-        )
-      });
-    } finally {
-      setUpdating(false);
-    }
-  };
 
   // Job trigger handler
   const handleTriggerJob = async (jobName) => {
@@ -355,25 +248,6 @@ export default function Home() {
         Automated Actions Dashboard
       </Typography>
 
-      {/* Repository Management */}
-      <Card sx={{ display: 'flex', flex: 0, gap: 3}} variant="outlined" style={{ marginBottom: '20px' }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom>Repository Management</Typography>
-          <Typography variant="body2" color="textSecondary" gutterBottom>
-            Update the Origin Dollar smart contracts repository to get the latest changes.
-          </Typography>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={handleUpdateRepo}
-            disabled={updating}
-            startIcon={updating ? <CircularProgress size={20} /> : null}
-          >
-            {updating ? 'Updating...' : 'Update Repository'}
-          </Button>
-        </CardContent>
-      </Card>
-
       {/* Job Runs Dashboard */}
       <Box sx={{ display: 'flex', gap: 3 }}>
         {/* Left Vertical Menu */}
@@ -425,18 +299,6 @@ export default function Home() {
             <Typography variant="h4" gutterBottom>
               Job Runs {selectedJobName ? `(Filtered by ${selectedJobName})` : ''}
             </Typography>
-            {selectedJobName && (
-                <Button
-                  variant="outlined"
-                  sx={{ p: 1, mb: 1, mt: -1 }}
-                  size="small"
-                  onClick={() => handleTriggerJob(selectedJobName)}
-                  disabled={triggering}
-                  startIcon={triggering ? <CircularProgress size={16} /> : null}
-                >
-                  {`Run manually`}
-                </Button>
-            )}
           </Box>
           <DataGrid
             rows={runs}
