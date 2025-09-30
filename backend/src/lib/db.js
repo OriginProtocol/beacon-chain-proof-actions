@@ -42,7 +42,7 @@ async function getLastSuccessfulJobs() {
   const jobNamesResult = await db.query(jobNamesQuery);
   return jobNamesResult.rows.map(row => ({ 
     name: row.job_name, 
-    seconds_since_last_run: parseInt(row.seconds_since_last_run) 
+    secondsSince: parseInt(row.seconds_since_last_run) 
   }));
 }
 

@@ -32,7 +32,8 @@ app.get('/health', async (c) => {
   
   return c.json({
     status: 'ok',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    lastSuccessfulRuns: jobIntervals,
   });
 });
 
