@@ -1,5 +1,7 @@
 {
   "name": "automated-actions-backend",
+  "author": "Origin Protocol",
+  "license": "MIT",
   "version": "0.1.0",
   "description": "Backend API for automated actions",
   "main": "src/server.js",
@@ -11,11 +13,14 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.12.0",
+    "@openzeppelin/defender-relay-client": "^1.54.6",
+    "axios": "^1.6.0",
     "dotenv": "^17.2.2",
     "ethers": "^6.15.0",
     "hono": "^4.6.5",
     "node-cron": "^4.2.1",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
@@ -25,7 +30,5 @@
     "automated",
     "actions",
     "backend"
-  ],
-  "author": "",
-  "license": "ISC"
+  ]
 }
