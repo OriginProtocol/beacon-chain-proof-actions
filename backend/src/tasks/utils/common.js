@@ -1,23 +1,24 @@
 const { ethers } = require('ethers');
 const { getDefaultSigner } = require('./singer');
 const { isMainnet, isHoodi, getNetworkName } = require('./utils');
+const { beaconChainGenesisTimeMainnet, beaconChainGenesisTimeHoodi } = require('./constants');
 
 // Strategy contract ABI - minimal for snapBalances
 const strategyAbi = [
-  "event BalancesVerified(bytes32 indexed blockRoot, uint256 totalBalance)",
+  "event BalancesVerified(uint64 indexed timestamp, uint256 totalDepositsWei, uint256 totalValidatorBalance, uint256 ethBalance)",
   "event BalancesSnapped(bytes32 indexed blockRoot, uint256 ethBalance)",
   "function snapBalances() external",
   "function snappedBalance() external view returns (bytes32 blockRoot, uint64 timestamp, uint128 ethBalance)",
   "function verifyBalances(tuple(bytes32 balancesContainerRoot, bytes balancesContainerProof, bytes32[] validatorBalanceLeaves, bytes[] validatorBalanceProofs) balanceProofs, tuple(bytes32 pendingDepositContainerRoot, bytes pendingDepositContainerProof, uint32[] pendingDepositIndexes, bytes[] pendingDepositProofs) pendingDepositProofsData) external",
   "function deposits(bytes32 depositRoot) external view returns (uint64 slot, uint256 amountGwei, bytes32 pubKeyHash, uint8 status, uint32 depositIndex)",
-  "function validator(bytes32 pubKeyHash) external view returns (uint8 state, uint32 index)",
-  "function verifyDeposit(bytes32 blockRoot, bytes32 depositMessageRoot, bytes32[] validatorBalanceLeaves, bytes[] validatorBalanceProofs, bytes32[] pendingDepositLeaves, bytes[] pendingDepositProofs, uint32[] pendingDepositIndexes) external",
-  "event DepositVerified(bytes32 indexed depositRoot, uint256 depositIndex)"
+  "function validator(bytes32 pubKeyHash) external view returns (uint8 state, uint40 index)",
+  "function verifyDeposit(bytes32 pendingDepositRoot, uint64 depositProcessedSlot, tuple(uint64 slot, bytes proof) firstPendingDeposit, tuple(uint64 withdrawableEpoch, bytes withdrawableEpochProof) strategyValidatorData)",
+  "event DepositVerified(bytes32 indexed depositRoot, uint256 amountWei)"
 ];
 
 const strategyViewAbi = [
-  "function getVerifiedValidators() external view returns (tuple(uint32 index, bytes32 pubKeyHash)[])",
-  "function getPendingDeposits() external view returns (tuple(bytes32 pendingDepositRoot, uint256 amountGwei, uint64 slot, bytes32 pubKeyHash)[])"
+  "function getVerifiedValidators() external view returns (tuple(bytes32 pubKeyHash, uint64 index, uint64 hash)[])",
+  "function getPendingDeposits() external view returns (tuple(bytes32 pendingDepositRoot, bytes32 pubKeyHash, uint64 amountGwei, uint64 slot)[])"
 ];
 
 const addCommonRuntimArgs = (yargs) => {
@@ -60,31 +61,36 @@ const environmentVariableCheck = async (isDryRun) => {
   }
 };
 
-const getContracts = async () => {
+const getContractsAndConstants = async () => {
   // Setup strategy contract 
   const wallet = await getDefaultSigner();
-  let strategyaAddress,strategyViewAddress;
+  let strategyaAddress,strategyViewAddress, beaconChainGenesisTime, beaconProvider
 
   if (await isMainnet()) {
     strategyaAddress = process.env.STAKING_STRATEGY_PROXY;
     strategyViewAddress = process.env.STAKING_STRATEGY_VIEW;
+    beaconChainGenesisTime = beaconChainGenesisTimeMainnet;
+    beaconProvider = `https://beaconcha.in/api/v1/`;
   } else {
     strategyaAddress = process.env.STAKING_STRATEGY_HOODI_PROXY;
     strategyViewAddress = process.env.STAKING_STRATEGY_HOODI_VIEW;
+    beaconChainGenesisTime = beaconChainGenesisTimeHoodi;
+    beaconProvider = `https://hoodi.beaconcha.in/api/v1/`;
   }
 
   const stakingStrategy = new ethers.Contract(strategyaAddress, strategyAbi, wallet);
   const stakingStrategyView = new ethers.Contract(strategyViewAddress, strategyViewAbi, wallet);
 
-
   return {
     stakingStrategy,
-    stakingStrategyView
+    stakingStrategyView,
+    beaconChainGenesisTime,
+    beaconProvider
   };
 };
 
 module.exports = {
   addCommonRuntimArgs,
   environmentVariableCheck,
-  getContracts,
+  getContracts: getContractsAndConstants,
 };

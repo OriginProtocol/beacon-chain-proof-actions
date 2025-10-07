@@ -84,8 +84,10 @@ const executeTransaction = async (contractMethod, args = [], dryRun = false, ove
     }
 
     console.log(`✅ Transaction confirmed in block ${receipt.blockNumber}`);
-    console.log(await getEtherscanLink(tx.hash));
-
+    console.log(`   Gas used: ${receipt.gasUsed.toString()}`);
+    console.log(`   Gas cost: ${ethers.formatEther(receipt.gasUsed * receipt.gasPrice)} ETH`);
+    console.log(`   Etherscan: ${await getEtherscanLink(tx.hash)}`);
+    
     return {
       tx,
       receipt,
@@ -102,11 +104,16 @@ const executeTransaction = async (contractMethod, args = [], dryRun = false, ove
   }
 }
 
+const toHex = (buff) => {
+  return "0x" + Buffer.from(buff).toString("hex");
+};
+
 module.exports = {
   isMainnet,
   isHoodi,
   getNetworkName,
   getDefaultProvider,
   executeTransaction,
-  findEventInReceipt
+  findEventInReceipt,
+  toHex
 };

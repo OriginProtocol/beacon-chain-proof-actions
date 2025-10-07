@@ -2,283 +2,193 @@
 
 require('dotenv').config();
 
-const { ethers } = require('ethers');
+const { ethers, formatUnits } = require('ethers');
 const yargs = require('yargs/yargs');
 const { hideBin } = require('yargs/helpers');
-const axios = require('axios');
-
+const { environmentVariableCheck, addCommonRuntimArgs, getContracts } = require('./utils/common');
+const { executeTransaction, findEventInReceipt, toHex } = require('./utils/utils');
+const { getBeaconBlock } = require('./utils/beacon');
+const { 
+  generatePendingDepositsContainerProof,
+  generatePendingDepositProof,
+  generateBalancesContainerProof,
+  generateBalanceProof
+} = require('./utils/proofs');
+const { ZERO_BYTES32 } = require('./utils/constants');
 
 const argv = addCommonRuntimArgs(yargs(hideBin(process.argv))
   .usage('Standalone verifyBalances script\\n\\nUsage: $0 [options]'))
     .help()
     .parse();
 
-function getDefaultBeaconApi(network) {
-  const apis = {
-    mainnet: 'https://beaconcha.in/api/v1',
-    holesky: 'https://holesky.beaconcha.in/api/v1'
-  };
-  return apis[network] || 'https://beaconcha.in/api/v1';
-}
-
-if (!argv.beaconApi) {
-  argv.beaconApi = getDefaultBeaconApi(argv.network);
-}
-
-// Strategy contract ABI for verifyBalances
-const strategyAbi = [
-  "function snappedBalance() external view returns (bytes32 blockRoot, uint64 timestamp, uint128 ethBalance)",
-  "function verifyBalances(tuple(bytes32 balancesContainerRoot, bytes balancesContainerProof, bytes32[] validatorBalanceLeaves, bytes[] validatorBalanceProofs) balanceProofs, tuple(bytes32 pendingDepositContainerRoot, bytes pendingDepositContainerProof, uint32[] pendingDepositIndexes, bytes[] pendingDepositProofs) pendingDepositProofsData) external",
-  "event BalancesVerified(bytes32 indexed blockRoot, uint256 totalBalance)"
-];
-
-const strategyViewAbi = [
-  "function getVerifiedValidators() external view returns (tuple(uint32 index, bytes32 pubKeyHash)[])",
-  "function getPendingDeposits() external view returns (tuple(bytes32 pendingDepositRoot, uint256 amountGwei, uint64 slot, bytes32 pubKeyHash)[])"
-];
-
-async function fetchBeaconData(beaconApi, endpoint, slot) {
-  try {
-    const url = slot ? `${beaconApi}/beacon/states/${slot}/${endpoint}` : `${beaconApi}/${endpoint}`;
-    const response = await axios.get(url, { timeout: 15000 });
-    return response.data;
-  } catch (error) {
-    throw new Error(`Failed to fetch beacon ${endpoint}: ${error.message}`);
-  }
-}
-
-function generateMerkleProof(leaves, targetIndex, targetLeaf) {
-  // Simplified Merkle proof generation
-  const proof = [];
-  let index = targetIndex;
-  
-  for (let level = 0; level < 16; level++) { // 16 levels for validator/balance trees
-    if (index % 2 === 1) {
-      proof.push(ethers.constants.HashZero);
-    } else {
-      const siblingHash = ethers.utils.keccak256(
-        ethers.utils.defaultAbiCoder.encode(
-          ['bytes32', 'bytes32'],
-          [targetLeaf, ethers.constants.HashZero]
-        )
-      );
-      proof.push(siblingHash);
-    }
-    index = Math.floor(index / 2);
-    if (index === 0) break;
-  }
-  
-  return proof.map(p => p.startsWith('0x') ? p : '0x' + p.slice(2));
-}
-
-async function getValidatorBalances(beaconApi, slot, indexes) {
-  // Simplified balance fetching - production would use proper beacon API calls
-  const balances = [];
-  for (const index of indexes) {
-    try {
-      // This is a placeholder - actual implementation needs proper beacon state access
-      const balance = ethers.BigNumber.from(Math.floor(Math.random() * 32000000000) + 32000000000); // 32+ ETH in gwei
-      balances.push({
-        index: parseInt(index),
-        balance: balance
-      });
-    } catch (error) {
-      console.warn(`Could not fetch balance for validator ${index}: ${error.message}`);
-    }
-  }
-  return balances;
-}
 
 async function verifyBalancesStandalone() {
-  console.log(`\n=== Standalone verifyBalances Script ===`);
-  console.log(`Network: ${argv.network}`);
-  console.log(`Strategy: ${argv.strategyAddress}`);
-  console.log(`RPC URL: ${argv.rpcUrl}`);
-  console.log(`Beacon API: ${argv.beaconApi}`);
-  console.log(`Validator indexes: ${argv.indexes || 'all strategy validators'}`);
-  console.log(`Dry run: ${argv.dryRun ? 'Yes' : 'No'}`);
+  await environmentVariableCheck(argv.dryRun);
+  const { stakingStrategy, stakingStrategyView } = await getContracts();
   
-  // Setup provider and wallet
-  const provider = new ethers.providers.JsonRpcProvider(argv.rpcUrl);
-  const privateKey = argv.privateKey.startsWith('0x') ? argv.privateKey : '0x' + argv.privateKey;
-  const wallet = new ethers.Wallet(privateKey, provider);
-  
-  console.log(`\nUsing account: ${wallet.address}`);
-  
-  // Check balance
-  const balance = await provider.getBalance(wallet.address);
-  console.log(`Account balance: ${ethers.utils.formatEther(balance)} ETH`);
-  
-  if (balance.lt(ethers.utils.parseEther('0.02'))) {
-    console.warn('⚠️  Low balance - verifyBalances may require significant gas');
-  }
-  
-  // Setup strategy contract
-  const strategy = new ethers.Contract(argv.strategyAddress, strategyAbi, wallet);
-  
-  if (argv.dryRun) {
-    console.log('\n--- Dry Run Mode ---');
-    
-    try {
-      // Get snapped balance
-      console.log('Reading strategy state...');
-      const snappedBalance = await strategy.snappedBalance();
-      console.log('Snapped balance:');
-      console.log(`  Block root: ${snappedBalance.blockRoot}`);
-      console.log(`  Timestamp: ${new Date(Number(snappedBalance.timestamp) * 1000).toISOString()}`);
-      console.log(`  ETH balance: ${ethers.utils.formatEther(snappedBalance.ethBalance)} ETH`);
-      
-      // Get verified validators
-      const verifiedValidators = await strategy.getVerifiedValidators();
-      console.log(`\nFound ${verifiedValidators.length} verified validators`);
-      
-      if (argv.indexes) {
-        const specifiedIndexes = argv.indexes.split(',').map(i => i.trim());
-        console.log(`Specified indexes: ${specifiedIndexes.join(', ')}`);
-      } else {
-        console.log('Will verify all strategy validators');
-      }
-      
-      // Get pending deposits
-      const pendingDeposits = await strategy.getPendingDeposits();
-      console.log(`Found ${pendingDeposits.length} pending deposits`);
-      
-      for (const deposit of pendingDeposits) {
-        console.log(`  Deposit: ${ethers.utils.formatEther(deposit.amountGwei)} ETH, root: ${deposit.pendingDepositRoot}`);
-      }
-      
-    } catch (error) {
-      console.error('Error reading contract state:', error.message);
-    }
-    
-    console.log('\nDry run completed - no transaction sent');
+  console.log('\n--- Executing verifyBalances ---');
+
+  // Check current snapped balance first
+  const snappedBalance = await stakingStrategy.snappedBalance();
+  if (snappedBalance.timestamp == 0) {
+    console.warn("⚠️ No snapped balance found. Exiting...");
     return;
   }
-  
-  try {
-    console.log('\n--- Executing verifyBalances ---');
-    
-    // Determine slot
-    let slot = argv.slot;
-    if (!slot) {
-      try {
-        const snappedBalance = await strategy.snappedBalance();
-        slot = snappedBalance.blockRoot;
-        console.log(`Using slot from snappedBalance: ${slot}`);
-      } catch (error) {
-        console.error('Could not get slot from snappedBalance:', error.message);
-        try {
-          const latestData = await fetchBeaconData(argv.beaconApi, 'headers/head');
-          const latestSlot = parseInt(latestData.data.number);
-          slot = latestSlot.toString();
-          console.log(`Using latest slot: ${slot}`);
-        } catch (error2) {
-          console.error('Could not determine slot automatically:', error2.message);
-          process.exit(1);
-        }
+  const slot = snappedBalance.blockRoot;
+  console.log(`Using block root to verify balances: ${slot}`);
+
+  // Uses the beacon chain data for the beacon block root
+  const { blockView, blockTree, stateView } = await getBeaconBlock(slot);
+  const verificationSlot = blockView.slot;
+
+  const {
+    leaf: pendingDepositContainerRoot,
+    proof: pendingDepositContainerProof,
+  } = await generatePendingDepositsContainerProof({
+    blockView,
+    blockTree,
+    stateView,
+  });
+
+  let pendingDepositIndexes = [];
+  let pendingDepositRoots = [];
+  let pendingDepositProofs = [];
+
+  const pendingDeposits = await stakingStrategyView.getPendingDeposits();
+  // For each of the strategy's pending deposits
+  for (const deposit of pendingDeposits) {
+    // Find the strategy's deposit in the beacon chain's pending deposits
+    let pendingDepositIndex = -1;
+    for (let i = 0; i < stateView.pendingDeposits.length; i++) {
+      const pd = stateView.pendingDeposits.get(i);
+      if (toHex(pd.hashTreeRoot()) === deposit.pendingDepositRoot) {
+        console.log(
+          `Found pending deposit with root ${deposit.pendingDepositRoot} at index ${i}`
+        );
+        pendingDepositIndex = i;
+        pendingDepositIndexes.push(pendingDepositIndex);
+        pendingDepositRoots.push(deposit.pendingDepositRoot);
+        break;
       }
     }
-    
-    // Get strategy data
-    console.log('Reading strategy data...');
-    const snappedBalance = await strategy.snappedBalance();
-    const verifiedValidators = argv.indexes 
-      ? argv.indexes.split(',').map(i => ({ index: parseInt(i.trim()), pubKeyHash: ethers.constants.HashZero }))
-      : await strategy.getVerifiedValidators();
-    
-    const pendingDeposits = await strategy.getPendingDeposits();
-    
-    console.log(`Verifying ${verifiedValidators.length} validators`);
-    console.log(`Found ${pendingDeposits.length} pending deposits`);
-    
-    // Get beacon chain data
-    console.log(`Fetching beacon chain data for slot ${slot}...`);
-    const blockData = await fetchBeaconData(argv.beaconApi, 'block', slot);
-    const blockRoot = blockData.data.root;
-    
-    // Get validator balances from beacon chain (simplified)
-    const validatorIndexes = verifiedValidators.map(v => v.index.toString());
-    const beaconBalances = await getValidatorBalances(argv.beaconApi, slot, validatorIndexes);
-    
-    console.log(`Fetched ${beaconBalances.length} validator balances from beacon chain`);
-    
-    // Generate balance proofs
-    console.log('Generating balance proofs...');
-    const balanceProofs = {
-      balancesContainerRoot: ethers.constants.HashZero, // Would be actual container root
-      balancesContainerProof: '0x' + '00'.repeat(288), // 9 * 32 bytes proof
-      validatorBalanceLeaves: verifiedValidators.map((_, i) => beaconBalances[i]?.balance || ethers.BigNumber.from(0)),
-      validatorBalanceProofs: verifiedValidators.map((v, i) => 
-        generateMerkleProof([], v.index.toNumber(), beaconBalances[i]?.balance || ethers.BigNumber.from(0))
-      )
-    };
-    
-    // Generate pending deposit proofs
-    const pendingDepositProofsData = {
-      pendingDepositContainerRoot: ethers.constants.HashZero,
-      pendingDepositContainerProof: '0x' + '00'.repeat(288),
-      pendingDepositIndexes: pendingDeposits.map((_, i) => i),
-      pendingDepositProofs: pendingDeposits.map((deposit, i) => 
-        generateMerkleProof([], i, deposit.pendingDepositRoot)
-      )
-    };
-    
-    console.log('Generated proofs:');
-    console.log(`  Balance proofs: ${balanceProofs.validatorBalanceProofs.length} validators`);
-    console.log(`  Deposit proofs: ${pendingDepositProofsData.pendingDepositProofs.length} deposits`);
-    
-    // Estimate gas
-    console.log('\nEstimating gas...');
-    const gasEstimate = await strategy.estimateGas.verifyBalances(balanceProofs, pendingDepositProofsData);
-    console.log(`Estimated gas: ${gasEstimate.toString()}`);
-    
-    const gasPrice = await provider.getGasPrice();
-    const gasCost = gasEstimate.mul(gasPrice);
-    console.log(`Estimated gas cost: ${ethers.utils.formatEther(gasCost)} ETH`);
-    
-    if (balance.lt(gasCost.mul(15).div(10))) {
-      throw new Error(`Insufficient balance for gas. Need at least ${ethers.utils.formatEther(gasCost.mul(15).div(10))} ETH`);
+    if (pendingDepositIndex === -1) {
+      throw Error(
+        `Could not find pending deposit with root hash ${deposit.pendingDepositRoot}`
+      );
     }
-    
-    console.log('\nSending verifyBalances transaction...');
-    const tx = await strategy.verifyBalances(balanceProofs, pendingDepositProofsData, {
-      gasLimit: gasEstimate.mul(15).div(10) // 50% buffer for complex proofs
+    const { proof } = await generatePendingDepositProof({
+      blockView,
+      blockTree,
+      stateView,
+      depositIndex: pendingDepositIndex,
     });
-    
-    console.log(`Transaction sent: https://${argv.network === 'mainnet' ? '' : argv.network + '.'}etherscan.io/tx/${tx.hash}`);
-    console.log('Waiting for confirmation...');
-    
-    const receipt = await tx.wait();
-    
-    if (receipt.status === 1) {
-      console.log(`✅ Transaction confirmed in block ${receipt.blockNumber}`);
-      
-      const event = receipt.events?.find(e => e.event === 'BalancesVerified');
-      if (event) {
-        console.log('\n🎉 Balances verified successfully!');
-        console.log(`   Block root: ${event.args.blockRoot}`);
-        console.log(`   Total balance: ${ethers.utils.formatEther(event.args.totalBalance)} ETH`);
-        console.log(`   Gas used: ${receipt.gasUsed.toString()}`);
-        const actualGasPrice = receipt.effectiveGasPrice || gasPrice;
-        console.log(`   Gas cost: ${ethers.utils.formatEther(receipt.gasUsed.mul(actualGasPrice))} ETH`);
-      } else {
-        console.log('Transaction succeeded but BalancesVerified event not found');
-      }
-    } else {
-      console.log('❌ Transaction failed');
-      process.exit(1);
-    }
-    
-  } catch (error) {
-    console.error('\n❌ Error executing verifyBalances:');
-    console.error(error.message);
-    
-    if (error.transactionHash || error.hash) {
-      const txHash = error.transactionHash || error.hash;
-      console.log(`Transaction hash: https://${argv.network === 'mainnet' ? '' : argv.network + '.'}etherscan.io/tx/${txHash}`);
-    }
-    
-    process.exit(1);
+    pendingDepositProofs.push(proof);
+  }
+
+  const verifiedValidators = await stakingStrategyView.getVerifiedValidators();
+
+  let balancesContainerRoot = ZERO_BYTES32;
+  let balancesContainerProof = "0x";
+  let blockRoot = ZERO_BYTES32;
+  if (verifiedValidators.length > 0) {
+    const balancesContainerProofData = await generateBalancesContainerProof({
+      blockView,
+      blockTree,
+      stateView,
+    });
+    balancesContainerRoot = balancesContainerProofData.leaf;
+    balancesContainerProof = balancesContainerProofData.proof;
+    blockRoot = balancesContainerProofData.root;
+  }
+
+  const validatorBalanceLeaves = [];
+  const validatorBalanceProofs = [];
+  const validatorBalances = [];
+  for (const validator of verifiedValidators) {
+    const { proof, leaf, balance } = await generateBalanceProof({
+      validatorIndex: validator.index,
+      blockView,
+      blockTree,
+      stateView,
+    });
+    validatorBalanceLeaves.push(leaf);
+    validatorBalanceProofs.push(proof);
+    validatorBalances.push(balance);
+
+    console.log(
+      `Validator ${validator.index} has balance: ${formatUnits(balance, 9)} ETH`
+    );
+  }
+  const validatorBalancesFormatted = validatorBalances.map((bal) =>
+    formatUnits(bal, 9)
+  );
+
+  if (argv.dryRun) {
+    console.log(`snapped slot                      : ${verificationSlot}`);
+    console.log(`snap balances block root          : ${blockRoot}`);
+    console.log(`\nbalancesContainerRoot           : ${balancesContainerRoot}`);
+    console.log(`\nbalancesContainerProof:\n${balancesContainerProof}`);
+    console.log(
+      `\nvalidatorBalanceLeaves:\n[${validatorBalanceLeaves
+        .map((leaf) => `"${leaf}"`)
+        .join(",\n")}]`
+    );
+    console.log(
+      `\nvalidatorBalanceProofs:\n[${validatorBalanceProofs
+        .map((proof) => `"${proof}"`)
+        .join(",\n")}]`
+    );
+    console.log(
+      `validatorBalances: [${validatorBalancesFormatted.join(", ")}]`
+    );
+    console.log(
+      `\npendingDepositsContainerRoot           : ${pendingDepositContainerRoot}`
+    );
+    console.log(
+      `\npendingDepositsContainerProof:\n${pendingDepositContainerProof}`
+    );
+    console.log(
+      `\npendingDepositIndexes:\n[${pendingDepositIndexes
+        .map((index) => `"${index}"`)
+        .join(",")}]`
+    );
+    console.log(
+      `\npendingDepositProofs:\n[${pendingDepositProofs
+        .map((proof) => `"${proof}"`)
+        .join(",\n")}]`
+    );
+    return;
+  }
+
+  const balanceProofs = {
+    balancesContainerRoot,
+    balancesContainerProof,
+    validatorBalanceLeaves,
+    validatorBalanceProofs,
+  };
+  const pendingDepositProofsData = {
+    pendingDepositContainerRoot,
+    pendingDepositContainerProof,
+    pendingDepositIndexes,
+    pendingDepositRoots,
+    pendingDepositProofs,
+  };
+
+  console.log(
+    `About to verify ${verifiedValidators.length} validator balances for slot ${verificationSlot} to beacon block root ${blockRoot}`
+  );
+  console.log(balanceProofs);
+  console.log(pendingDepositProofsData);
+
+  const { receipt } = await executeTransaction(stakingStrategy.verifyBalances, [balanceProofs, pendingDepositProofsData], argv.dryRun);
+
+  const verifiedEvent = await findEventInReceipt(receipt, stakingStrategy, 'BalancesVerified');
+
+  if (verifiedEvent) {
+    console.log(`\n🎉 Balances verified successfully!`);
+    console.log(`   Beacon block root: ${verifiedEvent.args.blockRoot}`);
+  } else {
+    console.log('Transaction succeeded but BalancesVerified event not found');
   }
 }
 

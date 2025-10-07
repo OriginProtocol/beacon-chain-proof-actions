@@ -145,4 +145,5 @@ pgdata/
 
 origin-dollar
 .env
+backend/cache
 todo.txt
