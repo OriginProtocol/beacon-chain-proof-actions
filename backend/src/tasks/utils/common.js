@@ -36,38 +36,6 @@ const addCommonRuntimArgs = (yargs) => {
 };
 
 const cacheDir = './cache';
-  const generalCacheFile = path.join(cacheDir, 'general.json');
-
-
-const getCache = (key) => {
-  if (!fs.existsSync(cacheDir)) {
-    fs.mkdirSync(cacheDir, { recursive: true });
-  }
-  
-  if (fs.existsSync(generalCacheFile)) {
-    try {
-      const cacheData = fs.readFileSync(generalCacheFile, 'utf8');
-      const cache = JSON.parse(cacheData);
-      return cache[key];
-    } catch (error) {
-      console.warn('Failed to read cache file, starting with empty cache:', error.message);
-      return undefined;
-    }
-  }
-  
-  return undefined;
-};
-
-const upsertCache = (key, value) => {
-  if (!fs.existsSync(cacheDir)) {
-    fs.mkdirSync(cacheDir, { recursive: true });
-  }
-  
-  const existingCache = getCache(); // Gets full cache since no key
-  const newCache = { ...existingCache, [key]: value };
-  
-  fs.writeFileSync(generalCacheFile, JSON.stringify(newCache, null, 2), 'utf8');
-};
 
 const cleanOldCache = () => {
   const cacheDir = './cache';
@@ -157,7 +125,5 @@ module.exports = {
   addCommonRuntimArgs,
   environmentVariableCheck,
   getContracts: getContractsAndConstants,
-  getCache,
-  upsertCache,
   cleanOldCache,
 };

@@ -16,7 +16,7 @@ const argv = addCommonRuntimArgs(yargs(hideBin(process.argv))
 
 async function snapBalancesStandalone() {
   await environmentVariableCheck(argv.dryRun);
-  const { stakingStrategy, stakingStrategyView } = await getContracts();
+  const { stakingStrategy } = await getContracts();
   
   console.log('\n--- Executing snapBalances ---');
   

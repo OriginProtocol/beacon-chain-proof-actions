@@ -5,7 +5,7 @@ require('dotenv').config();
 const { formatUnits } = require('ethers');
 const yargs = require('yargs/yargs');
 const { hideBin } = require('yargs/helpers');
-const { environmentVariableCheck, addCommonRuntimArgs, getContracts, getCache, upsertCache } = require('./utils/common');
+const { environmentVariableCheck, addCommonRuntimArgs, getContracts } = require('./utils/common');
 const { executeTransaction, findEventInReceipt, toHex } = require('./utils/utils');
 const { getBeaconBlock, getSlot } = require('./utils/beacon');
 const { 
@@ -22,14 +22,7 @@ const argv = addCommonRuntimArgs(yargs(hideBin(process.argv))
 // get deposits that have been processed on the beacon chain but not yet validated by the strategy
 async function getProcessedDeposits(pendingDeposits) {
   const depositProcessedSlot = await getSlot() - 30;
-  // const depositProcessedSlot = 1481745;
-  const latestDepositCheckSlot = (getCache('latestProcessedSlot')) || 0;
 
-  if (latestDepositCheckSlot + VERIFY_DEPOSIT_SLOT_BUFFER >= depositProcessedSlot) {
-    console.warn(`⚠️ At least ${VERIFY_DEPOSIT_SLOT_BUFFER} slots need to pass for a new check`);
-    console.log(`At least ${VERIFY_DEPOSIT_SLOT_BUFFER} slots need to pass for a new check`);
-    return;
-  }
   console.log(`Checking if any deposits have been processed on slot: ${depositProcessedSlot}`);
 
   // Uses the beacon chain data for the beacon block root
@@ -88,10 +81,6 @@ async function verifyDepositStandalone() {
 }
 
 async function verifyDeposit(deposit, depositProcessedSlot) {
-  // slot,
-  // root: depositRoot,
-  // index: strategyValidatorIndex,
-
   const { stakingStrategy } = await getContracts();
   let strategyDepositSlot = 0;
 
