@@ -1,175 +1,323 @@
 # Automated Actions
 
-A full-stack application for monitoring and managing automated DeFi operations with cron jobs.
+A full-stack application for automated DeFi operations, blockchain monitoring, and Ethereum staking balance management with scheduled tasks and API monitoring.
 
 ## Architecture
 
 This project is split into two main components:
 
-- **Frontend**: Next.js application (port 3000) - User interface for monitoring job runs
-- **Backend**: Express.js API server (port 3001) - API endpoints and database operations
+- **Frontend**: Next.js application (port 3000) - User interface for monitoring job runs and wallet information
+- **Backend**: Express.js API server (port 3001) - API endpoints, cron job orchestration, and database operations
+- **Tasks**: Standalone Node.js scripts for blockchain operations (snap balances, verify deposits, etc.)
 - **Database**: PostgreSQL - Stores job execution logs and metadata
 
 ## Features
 
-- 🔄 Automated cron job execution of Hardhat tasks
-- 📊 Real-time monitoring dashboard for job runs
-- 💰 Wallet balance and information display
-- 🗄️ PostgreSQL database for persistent logging
-- 🐳 Docker containerization for easy deployment
+- 🔄 Automated cron job execution for Ethereum staking operations
+- 📊 Real-time monitoring dashboard for job runs and transaction history
+- 💰 Wallet balance monitoring and Etherscan integration
+- 🧹 Automated cache cleanup and file management
+- 🗄️ PostgreSQL database for persistent logging and job tracking
+- 🐳 Docker containerization with concurrent server + cron execution
+- 🔐 Secure signer management (wallet or Defender relay)
+- ⚡ Gas optimization and transaction monitoring
 
 ## Quick Start
 
 ### Prerequisites
 
 - Node.js 18+
-- PostgreSQL database
-- Docker & Docker Compose (for containerized deployment)
+- PostgreSQL database (or Dockerized version)
+- Docker & Docker Compose (recommended for deployment)
+- Ethereum RPC provider (Infura, Alchemy, or local node)
+- Etherscan API key for transaction monitoring
 
 ### Development Setup
 
-1. **Clone Origin Dollar Repository:**
-   ```bash
-   # The origin-dollar repository has been moved to backend/origin-dollar/
-   # If you need to update it, you can pull changes from the original repo
-   cd backend/origin-dollar
-   git pull origin master
-   ```
-
-2. **Install dependencies:**
+1. **Clone and Install Dependencies:**
    ```bash
    # Install all workspace dependencies
    pnpm install
+   
+   # Or if using npm:
+   npm install
    ```
 
-3. **Environment Setup:**
-   - Copy `.env` and configure database and wallet settings
-   - Configure `backend/.env` with backend-specific settings
+2. **Environment Setup:**
+   - Copy `dev.env` to `.env` (frontend) and `backend/dev.env` to `backend/.env`
+   - Configure database connection, Ethereum provider, and wallet private keys
+   - Set `ETHERSCAN_API_KEY` for transaction links
+   - Configure `TASK_EXECUTOR_PRIVATE_KEY` for wallet signer (optional)
 
-4. **Start both services:**
+3. **Start Services:**
    ```bash
-   # Start frontend and backend together
+   # Start both frontend and backend with cron jobs
    pnpm run dev:full
-
+   
    # Or start separately:
-   pnpm run backend:dev  # Backend on port 3001
-   pnpm run dev          # Frontend on port 3000
+   pnpm run backend:dev  # Backend API + cron on port 3001
+   pnpm run dev          # Frontend on port 3000 (in another terminal)
+
+   # Run the cronjob service that executes the tasks
+   pnpm run run-cron
    ```
 
-5. **Access the application:**
-   - Frontend: http://localhost:3000
+4. **Access the Application:**
+   - Frontend Dashboard: http://localhost:3000
    - Backend API: http://localhost:3001
-   - Health check: http://localhost:3001/health
+   - Health Check: http://localhost:3001/health
 
-### Production Setup
+### Docker Development
 
 ```bash
-# Build and start with Docker Compose
+# Start all services with Docker Compose
 docker-compose up --build
 
-# Or start manually:
-npm run backend:start  # Backend
-npm run start          # Frontend (after build)
+# Access the same URLs as above
+# View combined logs:
+docker-compose logs -f
+
+# Run specific service:
+docker-compose up backend  # Backend only
+```
+
+## Production Deployment
+
+### Docker Compose (Recommended)
+
+```bash
+# Production build and start
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# View service logs
+docker-compose logs -f backend  # Server + cron logs
+docker-compose logs -f frontend # Frontend logs (if separate)
+
+# Scale services
+docker-compose up -d --scale backend=2
+
+# Update deployment
+docker-compose pull && docker-compose up -d --build
+```
+
+### Environment Variables
+
+#### Frontend (.env.local)
+```env
+NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
+NEXT_PUBLIC_ETHERSCAN_NETWORK=mainnet
+```
+
+#### Backend (backend/.env)
+```env
+PORT=3001
+NODE_ENV=production
+FRONTEND_URL=http://localhost:3000
+
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/automated_actions
+PG_SSL=false
+
+# Ethereum
+ETHEREUM_RPC_URL=https://mainnet.infura.io/v3/your_project_id
+ETHERSCAN_API_KEY=your_etherscan_api_key
+
+# Signer Configuration
+TASK_EXECUTOR_PRIVATE_KEY=0x_your_wallet_private_key
+# OR use Defender (alternative):
+DEFENDER_API_KEY=your_defender_key
+DEFENDER_API_SECRET=your_defender_secret
+
+# Beacon Chain
+BEACON_NODE_URL=http://localhost:5052
 ```
 
 ## API Endpoints
 
-- `GET /api/job-names` - List job names with execution counts
-- `GET /api/runs` - Paginated job execution history
-- `GET /api/wallet-info` - Wallet balance and address information
-- `POST /api/update-repo` - Update the Origin Dollar repository via git pull
 - `GET /health` - Backend health check
+- `GET /api/job-names` - List scheduled jobs with execution statistics
+- `GET /api/runs` - Paginated job execution history (`?page=1&limit=20&job_name=snap_balances`)
+- `GET /api/wallet-info` - Current wallet address, balance, and Etherscan link
+- `GET /api/gas-price` - Current recommended gas price for transactions
 
-### Repository Update Endpoint
-
-**POST `/api/update-repo`**
-
-Updates the Origin Dollar smart contracts repository by performing a `git pull` operation. This allows updating the contracts without rebuilding the Docker container.
-
-**Response:**
+### Job Runs Response Example
 ```json
 {
-  "success": true,
-  "message": "Repository updated successfully",
-  "output": "Merge made by the 'ort' strategy...\n13 files changed...",
-  "timestamp": "2025-09-27T00:04:21.068Z"
+  "runs": [
+    {
+      "id": 1,
+      "job_name": "snap_balances",
+      "status": "completed",
+      "started_at": "2025-01-09T15:00:00.000Z",
+      "completed_at": "2025-01-09T15:00:45.000Z",
+      "duration_ms": 45000,
+      "gas_used": "1250000",
+      "gas_cost_eth": "0.00325",
+      "output": "Balances snapped successfully - Block root: 0x...",
+      "error": null
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 150,
+    "pages": 8
+  }
 }
 ```
 
-**Error Response:**
-```json
-{
-  "error": "Failed to update repository",
-  "details": "Error message from git command"
-}
+## Automated Tasks
+
+The system runs scheduled blockchain operations via cron jobs:
+
+| Job Name | Schedule | Description |
+|----------|----------|-------------|
+| `snap_balances` | 3:00 PM daily | Snapshot validator balances to smart contract |
+| `verify_balances` | 3:03 PM daily | Verify staking balances against beacon chain |
+| `verify_deposit` | 9:30 AM, 2:30 PM, 7:30 PM daily | Process and verify pending deposits |
+| `clean_cache` | 1:00 PM daily | Remove cache files older than 5 days |
+
+### Customizing Schedules
+
+Edit `backend/src/lib/cron-jobs.js` to modify timing:
+
+```js
+module.exports = [
+  {
+    name: 'snap_balances',
+    schedule: '0 15 * * *', // 3:00 PM daily (cron format)
+    command: 'node src/tasks/snapBalances.js',
+  },
+  // ... other jobs
+];
 ```
-
-## Cron Jobs
-
-The application runs automated Hardhat tasks:
-- `fund_taks`: Funds accounts on mainnet
-- `validator_snap_balances`: Takes validator balance snapshots
-
-Configure job schedules in `backend/src/lib/cron-jobs.js`. Jobs execute Hardhat tasks from `backend/origin-dollar/contracts/`.
 
 ## Project Structure
 
 ```
-├── backend/                 # Express.js API server
-│   ├── origin-dollar/       # Origin Protocol smart contracts
+automated-actions/
+├── backend/                          # Express.js API + Cron Orchestration
 │   ├── src/
 │   │   ├── lib/
-│   │   │   ├── cron-jobs.js # Cron job configurations
-│   │   │   └── db.js       # Database connection
-│   │   ├── routes/         # API route handlers
+│   │   │   ├── cron-jobs.js         # Job schedule definitions
+│   │   │   └── db.js                # PostgreSQL connection
+│   │   ├── routes/                  # API endpoints (job-names, runs, wallet-info)
 │   │   ├── scripts/
-│   │   │   └── run-cron.js # Cron job runner script
-│   │   └── server.js       # Main server file
-│   └── package.json
-├── src/                     # Next.js frontend (UI only)
-│   ├── app/
-│   │   └── page.js         # Main dashboard (job monitoring + repo management)
-│   └── scripts/
-│     └── testpg.js         # Database test script
-├── docker-compose.yml       # Multi-service setup
-└── Dockerfile.backend       # Backend container config
-```
-
-## Environment Variables
-
-### Frontend (.env.local)
-```env
-NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
-```
-
-### Backend (backend/.env)
-```env
-PORT=3001
-NODE_ENV=development
-FRONTEND_URL=http://localhost:3000
-
-# Database
-PG_HOST=localhost
-PG_USER=postgres
-PG_PASSWORD=password
-PG_DATABASE=automated_actions
-PG_PORT=5432
-
-# Wallet
-DEPLOYER_PK=your_private_key_here
-PROVIDER_URL=https://mainnet.infura.io/v3/your_project_id
+│   │   │   └── run-cron.js          # Cron job executor
+│   │   ├── server.js                # Main Express server
+│   │   └── tasks/                   # Standalone blockchain operations
+│   │       ├── snapBalances.js      # Snapshot validator balances
+│   │       ├── verifyBalances.js    # Verify staking balances
+│   │       ├── verifyDeposit.js     # Process pending deposits
+│   │       ├── cleanCache.js        # Cache cleanup utility
+│   │       └── utils/               # Shared utilities (signers, proofs, beacon)
+│   │           ├── common.js        # Cache management, contracts
+│   │           ├── singer.js        # Wallet/Defender signer management
+│   │           ├── utils.js         # Transaction execution, gas estimation
+│   │           ├── beacon.js        # Beacon chain state processing
+│   │           └── proofs.js        # Merkle proof generation/verification
+│   ├── package.json                 # Backend dependencies
+│   └── dev.env                      # Backend environment template
+├── src/                             # Next.js Frontend
+│   ├── app/                         # App Router pages
+│   │   ├── page.js                  # Main dashboard (job monitoring)
+│   │   ├── layout.js                # Root layout with theme provider
+│   │   └── globals.css              # Global styles
+│   └── utils/                       # Frontend utilities
+│       └── time.js                  # Date/time formatting
+├── docker-compose.yml               # Development multi-service setup
+├── Dockerfile.backend               # Backend container (server + cron)
+├── pnpm-workspace.yaml              # Monorepo workspace config
+└── dev.env                          # Root environment template
 ```
 
 ## Scripts
 
-- `pnpm run dev` - Start frontend in development
-- `pnpm run backend:dev` - Start backend in development
-- `pnpm run dev:full` - Start both frontend and backend
-- `pnpm run run-cron` - Execute cron jobs manually
+### Development
+```bash
+pnpm run dev:full          # Start everything (frontend + backend + cron)
+pnpm run backend:dev       # Backend API + cron jobs only
+pnpm run dev               # Frontend only
+node backend/src/tasks/snapBalances.js  # Run specific task manually
+```
 
-## Security Notes
+### Production
+```bash
+npm run build              # Build frontend for production
+npm run start              # Start backend in production
+docker-compose up -d       # Dockerized production deployment
+```
 
-- API endpoints include CORS configuration
-- Helmet.js provides security headers
-- Wallet private keys should be stored securely
-- Consider authentication for production deployments
+### Utilities
+```bash
+node backend/src/tasks/cleanCache.js    # Manual cache cleanup
+node backend/src/scripts/run-cron.js    # Run all cron jobs once
+pnpm run db:migrate          # Database migrations (if using Prisma)
+```
+
+## Security & Best Practices
+
+- **Private Keys**: Use environment variables or secret management (AWS Secrets Manager, HashiCorp Vault)
+- **Rate Limiting**: API endpoints include rate limiting middleware
+- **CORS**: Configured for frontend-only access in production
+- **HTTPS**: Use reverse proxy (nginx, Caddy) for SSL termination
+- **Monitoring**: Integrate with logging services (Sentry, DataDog) for error tracking
+- **Backup**: Regular database backups and cache pruning
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Cron Jobs Not Running**
+   - Check `backend/src/lib/cron-jobs.js` syntax
+   - Verify `run-cron.js` is executing without errors
+   - Ensure tasks have proper error handling
+
+2. **Database Connection Failed**
+   ```bash
+   # Test database connection
+   node backend/src/scripts/testpg.js
+   
+   # Check environment variables
+   cat backend/.env | grep DATABASE_URL
+   ```
+
+3. **Ethereum RPC Errors**
+   - Verify `ETHEREUM_RPC_URL` is accessible
+   - Check rate limits with your provider
+   - Test signer configuration in `backend/src/tasks/utils/singer.js`
+
+4. **Docker Issues**
+   ```bash
+   # Rebuild containers
+   docker-compose down && docker-compose up --build
+   
+   # Check container logs
+   docker-compose logs backend
+   
+   # Clear Docker cache
+   docker system prune -f
+   ```
+
+### Logs & Debugging
+
+- **Application Logs**: `docker-compose logs -f backend` or `tail -f backend/logs/*.log`
+- **Database Logs**: Enable PostgreSQL logging in `postgresql.conf`
+- **Blockchain Logs**: Tasks output detailed transaction information to console
+- **Frontend Errors**: Browser DevTools + Next.js error boundaries
+
+## Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+*Built for Ethereum staking automation and DeFi operations monitoring. Contributions welcome!*
