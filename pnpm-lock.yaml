@@ -31,7 +31,7 @@ importers:
         version: 1.0.2
       dotenv:
         specifier: ^17.2.2
-        version: 17.2.2
+        version: 17.2.3
       next:
         specifier: 15.5.4
         version: 15.5.4(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -74,7 +74,7 @@ importers:
         version: 1.2.1
       '@hono/node-server':
         specifier: ^1.12.0
-        version: 1.19.5(hono@4.9.9)
+        version: 1.19.5(hono@4.9.10)
       '@lodestar/api':
         specifier: ^1.34.1
         version: 1.34.1
@@ -101,13 +101,13 @@ importers:
         version: 1.0.1
       dotenv:
         specifier: ^17.2.2
-        version: 17.2.2
+        version: 17.2.3
       ethers:
         specifier: ^6.15.0
         version: 6.15.0(bufferutil@4.0.7)(utf-8-validate@6.0.3)
       hono:
         specifier: ^4.6.5
-        version: 4.9.9
+        version: 4.9.10
       node-cron:
         specifier: ^4.2.1
         version: 4.2.1
@@ -1475,8 +1475,8 @@ packages:
   dom-helpers@5.2.1:
     resolution: {integrity: sha512-nRCa7CK3VTrM2NmGkIy4cbK7IZlgBE/PYMn55rrXefr5xXDP0LdtfPnblFDoVdcAfslJ7or6iqAUnx0CCGIWQA==}
 
-  dotenv@17.2.2:
-    resolution: {integrity: sha512-Sf2LSQP+bOlhKWWyhFsn0UsfdK/kCWRv1iuA2gXAwt3dyNabr6QSj00I2V10pidqz69soatm9ZwZvpQMTIOd5Q==}
+  dotenv@17.2.3:
+    resolution: {integrity: sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==}
     engines: {node: '>=12'}
 
   dunder-proto@1.0.1:
@@ -1882,8 +1882,8 @@ packages:
   hoist-non-react-statics@3.3.2:
     resolution: {integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==}
 
-  hono@4.9.9:
-    resolution: {integrity: sha512-Hxw4wT6zjJGZJdkJzAx9PyBdf7ZpxaTSA0NfxqjLghwMrLBX8p33hJBzoETRakF3UJu6OdNQBZAlNSkGqKFukw==}
+  hono@4.9.10:
+    resolution: {integrity: sha512-AlI15ijFyKTXR7eHo7QK7OR4RoKIedZvBuRjO8iy4zrxvlY5oFCdiRG/V/lFJHCNXJ0k72ATgnyzx8Yqa5arug==}
     engines: {node: '>=16.9.0'}
 
   http-https@1.0.0:
@@ -3449,9 +3449,9 @@ snapshots:
       '@ethersproject/properties': 5.8.0
       '@ethersproject/strings': 5.8.0
 
-  '@hono/node-server@1.19.5(hono@4.9.9)':
+  '@hono/node-server@1.19.5(hono@4.9.10)':
     dependencies:
-      hono: 4.9.9
+      hono: 4.9.10
 
   '@humanfs/core@0.19.1': {}
 
@@ -4484,7 +4484,7 @@ snapshots:
       '@babel/runtime': 7.28.4
       csstype: 3.1.3
 
-  dotenv@17.2.2: {}
+  dotenv@17.2.3: {}
 
   dunder-proto@1.0.1:
     dependencies:
@@ -5071,7 +5071,7 @@ snapshots:
     dependencies:
       react-is: 16.13.1
 
-  hono@4.9.9: {}
+  hono@4.9.10: {}
 
   http-https@1.0.0: {}
 
