@@ -1,36 +1,28 @@
 const ethers = require("ethers");
-const {
-  DefenderRelaySigner,
-  DefenderRelayProvider,
-} = require("@openzeppelin/defender-relay-client/lib/ethers");
 const { isMainnet, getDefaultProvider } = require('./utils');
 
 const getDefenderSigner = async () => {
-  const speed = process.env.SPEED || "fastest";
-  if (!["safeLow", "average", "fast", "fastest"].includes(speed)) {
-    console.error(
-      `Defender Relay Speed param must be either 'safeLow', 'average', 'fast' or 'fastest'. Not "${speed}"`
-    );
-    process.exit(2);
-  }
-
-  const getIsMainnet = await isMainnet();
-
-  const apiKey = getIsMainnet
+  const { Relayer } = await import('@openzeppelin/defender-sdk-relay-signer-client');
+  const _isMainnet = await isMainnet();
+  const apiKey = _isMainnet
     ? process.env.DEFENDER_API_KEY
     : process.env.HOODI_DEFENDER_API_KEY;
-  const apiSecret = getIsMainnet
+  const apiSecret = _isMainnet
     ? process.env.DEFENDER_API_SECRET
     : process.env.HOODI_DEFENDER_API_SECRET;
 
+  if (!apiKey || !apiSecret) {
+    console.warn('⚠️ DEFENDER_API_KEY or DEFENDER_API_SECRET is not set in environment variables.');
+    return null;
+  }
+
   const credentials = { apiKey, apiSecret };
+  const client = new Relayer(credentials);
+  const provider = client.getProvider({ ethersVersion: 'v6' });
+  const speed = 'fast';
+  const signer = await client.getSigner(provider, { speed, ethersVersion: 'v6' });
 
-  const provider = new DefenderRelayProvider(credentials);
-  const signer = new DefenderRelaySigner(credentials, provider, {
-    speed,
-  });
-
-  log(
+  console.log(
     `Using Defender Relayer account ${await signer.getAddress()} with key ${apiKey} and speed ${speed}`
   );
   return signer;

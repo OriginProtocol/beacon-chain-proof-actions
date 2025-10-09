@@ -70,7 +70,7 @@ const environmentVariableCheck = async (isDryRun) => {
     throw new Error('PROVIDER_URL is a required environment variable.');
   }
   const isPrivateWalletSetup = process.env.TASK_EXECUTOR_PRIVATE_KEY;
-  const isDefenderSetup = process.env.DEFENDER_API_KEY || process.env.HOLESKY_DEFENDER_API_KEY;
+  const isDefenderSetup = process.env.DEFENDER_API_KEY || process.env.HOODI_DEFENDER_API_KEY;
 
   if (!process.env.PROVIDER_URL) {
     throw new Error('PROVIDER_URL is a required environment variable.');
@@ -89,7 +89,7 @@ const environmentVariableCheck = async (isDryRun) => {
     return;
   }
   if (!isPrivateWalletSetup && !isDefenderSetup) {
-    throw new Error('Either TASK_EXECUTOR_PRIVATE_KEY or DEFENDER_API_KEY or HOLESKY_DEFENDER_API_KEY is required.');
+    throw new Error('Either TASK_EXECUTOR_PRIVATE_KEY or DEFENDER_API_KEY or HOODI_DEFENDER_API_KEY is required.');
   }
 };
 
