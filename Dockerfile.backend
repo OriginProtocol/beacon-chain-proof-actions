@@ -1,31 +1,22 @@
 FROM node:18-alpine
 
-WORKDIR /app
-
-# Install pnpm and git
-RUN npm install -g pnpm && apk add --no-cache git
-
-# Clone origin-dollar repository
-RUN git clone https://github.com/OriginProtocol/origin-dollar.git origin-dollar
+# Set working directory to backend
+WORKDIR /app/backend
 
 # Copy package files
 COPY backend/package*.json ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install all dependencies (both production and dev for concurrently)
+RUN npm ci
 
-# Copy source code
-COPY backend/src ./src
+# Copy backend source code
+COPY backend/ ./
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
+# Create logs directory
+RUN mkdir -p logs
 
-# Change ownership of the app directory
-RUN chown -R nextjs:nodejs /app
+# Expose port for the server
+EXPOSE 3000
 
-USER nextjs
-
-EXPOSE 3001
-
-CMD ["pnpm", "start"]
+# Use concurrently to run both server and cron in parallel
+CMD ["npm", "run", "dev"]
