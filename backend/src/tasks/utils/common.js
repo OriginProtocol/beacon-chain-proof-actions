@@ -2,6 +2,8 @@ const { ethers } = require('ethers');
 const { getDefaultSigner } = require('./singer');
 const { isMainnet, isHoodi, getNetworkName } = require('./utils');
 const { beaconChainGenesisTimeMainnet, beaconChainGenesisTimeHoodi } = require('./constants');
+const fs = require('fs');
+const path = require('path');
 
 // Strategy contract ABI - minimal for snapBalances
 const strategyAbi = [
@@ -10,7 +12,7 @@ const strategyAbi = [
   "function snapBalances() external",
   "function snappedBalance() external view returns (bytes32 blockRoot, uint64 timestamp, uint128 ethBalance)",
   "function verifyBalances(tuple(bytes32 balancesContainerRoot, bytes balancesContainerProof, bytes32[] validatorBalanceLeaves, bytes[] validatorBalanceProofs) balanceProofs, tuple(bytes32 pendingDepositContainerRoot, bytes pendingDepositContainerProof, uint32[] pendingDepositIndexes, bytes[] pendingDepositProofs) pendingDepositProofsData) external",
-  "function deposits(bytes32 depositRoot) external view returns (uint64 slot, uint256 amountGwei, bytes32 pubKeyHash, uint8 status, uint32 depositIndex)",
+  "function deposits(bytes32 depositRoot) external view returns (bytes32 pubKeyHash, uint256 amountGwei, uint64 slot, uint32 depositIndex, uint8 status)",
   "function validator(bytes32 pubKeyHash) external view returns (uint8 state, uint40 index)",
   "function verifyDeposit(bytes32 pendingDepositRoot, uint64 depositProcessedSlot, tuple(uint64 slot, bytes proof) firstPendingDeposit, tuple(uint64 withdrawableEpoch, bytes withdrawableEpochProof) strategyValidatorData)",
   "event DepositVerified(bytes32 indexed depositRoot, uint256 amountWei)"
@@ -31,6 +33,68 @@ const addCommonRuntimArgs = (yargs) => {
   })
 
   return yargs;
+};
+
+const cacheDir = './cache';
+  const generalCacheFile = path.join(cacheDir, 'general.json');
+
+
+const getCache = (key) => {
+  if (!fs.existsSync(cacheDir)) {
+    fs.mkdirSync(cacheDir, { recursive: true });
+  }
+  
+  if (fs.existsSync(generalCacheFile)) {
+    try {
+      const cacheData = fs.readFileSync(generalCacheFile, 'utf8');
+      const cache = JSON.parse(cacheData);
+      return cache[key];
+    } catch (error) {
+      console.warn('Failed to read cache file, starting with empty cache:', error.message);
+      return undefined;
+    }
+  }
+  
+  return undefined;
+};
+
+const upsertCache = (key, value) => {
+  if (!fs.existsSync(cacheDir)) {
+    fs.mkdirSync(cacheDir, { recursive: true });
+  }
+  
+  const existingCache = getCache(); // Gets full cache since no key
+  const newCache = { ...existingCache, [key]: value };
+  
+  fs.writeFileSync(generalCacheFile, JSON.stringify(newCache, null, 2), 'utf8');
+};
+
+const cleanOldCache = () => {
+  const cacheDir = './cache';
+  const fiveDaysAgo = Date.now() - (5 * 24 * 60 * 60 * 1000); // 5 days in milliseconds
+  
+  if (!fs.existsSync(cacheDir)) {
+    return; // No cache directory, nothing to clean
+  }
+  
+  const files = fs.readdirSync(cacheDir);
+  
+  for (const file of files) {
+    const filePath = path.join(cacheDir, file);
+    const stats = fs.statSync(filePath);
+    
+    if (stats.isFile() && stats.mtimeMs < fiveDaysAgo) {
+      console.log(`Deleting old cache file: ${file}`);
+      fs.unlinkSync(filePath);
+    }
+  }
+  
+  // Optionally remove empty cache directory if no files remain
+  const remainingFiles = fs.readdirSync(cacheDir);
+  if (remainingFiles.length === 0) {
+    fs.rmdirSync(cacheDir);
+    console.log('Cache directory is empty, removed it');
+  }
 };
 
 const environmentVariableCheck = async (isDryRun) => {
@@ -93,4 +157,7 @@ module.exports = {
   addCommonRuntimArgs,
   environmentVariableCheck,
   getContracts: getContractsAndConstants,
+  getCache,
+  upsertCache,
+  cleanOldCache,
 };

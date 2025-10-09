@@ -35,7 +35,7 @@ const getSlot = async (blockId = "head") => {
   const client = await configClient();
 
   // Get the latest beacon block data using Lodestar
-  console.log(`Fetching block header for blockId ${blockId} from the beacon node`);
+  console.log(`Fetching block header for blockId: ${blockId} from the beacon node`);
   const blockHeaderRes = await client.beacon.getBlockHeader({
     blockId,
   });
@@ -187,6 +187,11 @@ const getValidator = async (pubkey) => {
   return await beaconchainRequest(`validator/${pubkey}`, beaconProvider);
 };
 
+const getValidatorDeposits = async (pubkey) => {
+  const beaconProvider = (await getContractsAndConstants()).beaconProvider;
+  return await beaconchainRequest(`validator/${pubkey}/deposits`, beaconProvider);
+};
+
 const getValidators = async (pubkeys, beaconChainApiKey) => {
   const encodedPubkeys = encodeURIComponent(pubkeys);
   return await beaconchainRequest(
@@ -197,6 +202,11 @@ const getValidators = async (pubkeys, beaconChainApiKey) => {
 
 const getEpoch = async (epochId = "latest") => {
   return await beaconchainRequest(`epoch/${epochId}`);
+};
+
+const getSlotBySlotId = async (slotId = "head") => {
+  const beaconProvider = (await getContractsAndConstants()).beaconProvider;
+  return await beaconchainRequest(`slot/${slotId}`, beaconProvider);
 };
 
 const beaconchainRequest = async (endpoint, overrideProvider) => {

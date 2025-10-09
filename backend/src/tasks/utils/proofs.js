@@ -61,33 +61,7 @@ async function generateFirstPendingDepositSlotProof({
   console.log(
     `First pending deposit slot proof of depth ${proofObj.witnesses.length} in bytes:\n${proofBytes}`
   );
-
-  if (test) {
-    // Generate the proof of the slot within the first pending deposit
-    const subTreeGeneralizedIndex = concatGindices([
-      blockView.type.getPathInfo(["stateRoot"]).gindex,
-      stateView.type.getPathInfo(["pendingDeposits", 0]).gindex,
-      toGindex(1, 1n), // depth 1, index 1 for slot = 3
-    ]);
-    // Generate the slot proof in the first pending deposit
-    const subTree = blockTree.getSubtree(subTreeGeneralizedIndex);
-    console.log(`Sub tree root: ${toHex(subTree.root)}`);
-    const subTreeProofObj = createProof(subTree.rootNode, {
-      type: ProofType.single,
-      // depth 2, index 0 for slot = 4
-      gindex: toGindex(2, 0n),
-    });
-    console.log(
-      `First pending deposit slot ${firstPendingDepositSlot} has leaf: ${toHex(
-        subTreeProofObj.leaf
-      )}`
-    );
-    const subTreeProofBytes = toHex(concatProof(subTreeProofObj));
-    console.log(
-      `First pending deposit slot proof of depth ${subTreeProofObj.witnesses.length} in bytes:\n${subTreeProofBytes}`
-    );
-  }
-
+  
   return {
     proof: proofBytes,
     generalizedIndex,

@@ -5,15 +5,14 @@ const path = require('path');
 const { db } = require('../lib/db.js');
 const jobs = require('../lib/cron-jobs.js');
 
-const secondaryPath = path.join(__dirname, '../..', './origin-dollar');
-const contractsPath = path.join(secondaryPath, 'contracts'); // Where Hardhat tasks are ran from
+const homeDir = path.join(__dirname, '../..');
 
 jobs.forEach(job => {
   cron.schedule(job.schedule, () => {
     const fullCommand = job.command;
     const runTime = new Date();
 
-    exec(fullCommand, { cwd: contractsPath, env: { ...process.env } }, async (error, stdout, stderr) => {
+    exec(fullCommand, { cwd: homeDir, env: { ...process.env } }, async (error, stdout, stderr) => {
       const success = !error;
       try {
         await db.query(

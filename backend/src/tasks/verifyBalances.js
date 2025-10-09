@@ -2,7 +2,7 @@
 
 require('dotenv').config();
 
-const { ethers, formatUnits } = require('ethers');
+const { formatUnits } = require('ethers');
 const yargs = require('yargs/yargs');
 const { hideBin } = require('yargs/helpers');
 const { environmentVariableCheck, addCommonRuntimArgs, getContracts } = require('./utils/common');

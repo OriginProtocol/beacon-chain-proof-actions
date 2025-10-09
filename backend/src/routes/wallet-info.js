@@ -5,11 +5,11 @@ const router = new Hono();
 
 router.get('/', async (c) => {
   try {
-    const privateKey = process.env.DEPLOYER_PK;
+    const privateKey = process.env.TASK_EXECUTOR_PRIVATE_KEY;
     const providerUrl = process.env.PROVIDER_URL;
 
     if (!privateKey || !providerUrl) {
-      throw new Error('Missing DEPLOYER_PK or PROVIDER_URL in environment variables');
+      throw new Error('Missing TASK_EXECUTOR_PRIVATE_KEY or PROVIDER_URL in environment variables');
     }
 
     const provider = new ethers.JsonRpcProvider(providerUrl);
