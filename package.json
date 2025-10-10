@@ -22,6 +22,7 @@
     "@mui/material": "^7.3.2",
     "@mui/x-data-grid": "^8.11.3",
     "child_process": "^1.0.2",
+    "concurrently": "^8.2.2",
     "dotenv": "^17.2.2",
     "next": "15.5.4",
     "pg": "^8.16.3",
@@ -31,7 +32,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "concurrently": "^8.2.2",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
     "tailwindcss": "^4"
