@@ -1,6 +1,6 @@
-# Automated Actions
+# Beacon chain proof actions
 
-A full-stack application for automated DeFi operations, blockchain monitoring, and Ethereum staking balance management with scheduled tasks and API monitoring.
+A full-stack application for executing cron-job off-chain DeFi operations to support OETH validator staking strategy. UI displays the historical record of executed actions.
 
 ## Architecture
 
@@ -8,7 +8,7 @@ This project is split into two main components:
 
 - **Frontend**: Next.js application (port 3000) - User interface for monitoring job runs and wallet information
 - **Backend**: Express.js API server (port 3001) - API endpoints, cron job orchestration, and database operations
-- **Tasks**: Standalone Node.js scripts for blockchain operations (snap balances, verify deposits, etc.)
+- **Tasks**: Standalone Node.js scripts for blockchain operations (snap balances, verify deposits, verify balances etc.)
 - **Database**: PostgreSQL - Stores job execution logs and metadata
 
 ## Features
@@ -47,7 +47,9 @@ This project is split into two main components:
    - Copy `dev.env` to `.env` (frontend) and `backend/dev.env` to `backend/.env`
    - Configure database connection, Ethereum provider, and wallet private keys
    - Set `ETHERSCAN_API_KEY` for transaction links
-   - Configure `TASK_EXECUTOR_PRIVATE_KEY` for wallet signer (optional)
+   - Configure one of the transaction signing options
+      - Configure `TASK_EXECUTOR_PRIVATE_KEY` for wallet signer
+      - Configure `DEFENDER_API_KEY` & `HOODI_DEFENDER_API_SECRET` for Defender relayer signer
 
 3. **Start Services:**
    ```bash
@@ -115,21 +117,40 @@ NODE_ENV=production
 FRONTEND_URL=http://localhost:3000
 
 # Database
-DATABASE_URL=postgresql://user:password@localhost:5432/automated_actions
+PG_HOST=localhost
+PG_USER=postgres
+PG_PASSWORD=password
+PG_DATABASE=automated_actions
+PG_PORT=5432
 PG_SSL=false
 
-# Ethereum
-ETHEREUM_RPC_URL=https://mainnet.infura.io/v3/your_project_id
-ETHERSCAN_API_KEY=your_etherscan_api_key
-
-# Signer Configuration
-TASK_EXECUTOR_PRIVATE_KEY=0x_your_wallet_private_key
-# OR use Defender (alternative):
-DEFENDER_API_KEY=your_defender_key
-DEFENDER_API_SECRET=your_defender_secret
-
 # Beacon Chain
-BEACON_NODE_URL=http://localhost:5052
+# Execution layer provider: e.g. https://eth-mainnet.g.alchemy.com/v2...
+PROVIDER_URL=
+# Beacon chain provider: e.g. https://blue-white-gadget.ethereum-hoodi.quiknode.pro/...
+BEACON_PROVIDER_URL=
+# API Key for https://beaconcha.in/
+BEACONCHAIN_API_KEY=Nk81d1d6Z01DQnFoVEZGeU9RcGhHYll5VjNQTA
+
+# staking strategy address and view cotract for mainnet and hoodi. PROVIDER_URL will determine whether to use mainnet or hoodie
+STAKING_STRATEGY_PROXY=
+STAKING_STRATEGY_VIEW=
+STAKING_STRATEGY_HOODI_PROXY=0xb5B92DEFC0a9623E31e10Fe0BaE02610bf76fd09
+STAKING_STRATEGY_HOODI_VIEW=0x13eDDe0650E41f3B54E43f6783EA6eFD49F0C804
+
+# Optional limit of maximum Gas Price. If current network prices go above this price the transaction 
+# is not attempted. Leave empty for no limit
+MAX_GAS_PRICE_GWEI=
+
+# wallet that will be executing the on-chain transactions without 0x prefix
+# if below key is configured it will be prioritised. If the key is not configured
+# then the defender signer will attempt to be created
+TASK_EXECUTOR_PRIVATE_KEY=0x_your_wallet_private_key
+# for Defender signer. PROVIDER_URL will determine whether to use mainnet or hoodie
+DEFENDER_API_KEY=
+HOODI_DEFENDER_API_KEY=
+DEFENDER_API_SECRET=
+HOODI_DEFENDER_API_SECRET=
 ```
 
 ## API Endpoints

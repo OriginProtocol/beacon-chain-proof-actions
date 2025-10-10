@@ -1,4 +1,4 @@
-# Automated Actions Backend
+# Beacon chain proof actions Backend
 
 Express.js API server for the Automated Actions application.
 
@@ -66,28 +66,6 @@ Returns wallet address, balance, and etherscan link.
   "balance": "1.2345",
   "etherscanLink": "https://etherscan.io/address/0x1234..."
 }
-```
-
-## Environment Variables
-
-Create a `.env` file in the backend directory:
-
-```env
-PORT=3001
-NODE_ENV=development
-FRONTEND_URL=http://localhost:3000
-
-# Database
-PG_HOST=localhost
-PG_USER=postgres
-PG_PASSWORD=password
-PG_DATABASE=automated_actions
-PG_PORT=5432
-PG_SSL=false
-
-# Wallet
-DEPLOYER_PK=your_private_key_here
-PROVIDER_URL=https://mainnet.infura.io/v3/your_project_id
 ```
 
 ## Running the Server
