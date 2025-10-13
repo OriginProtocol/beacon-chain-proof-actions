@@ -2,54 +2,84 @@ FROM node:20-alpine AS deps
 # Check https://github.com/nodejs/docker-node/tree/gh-pages/20/alpine3.20/index.md#node20-alpine320-bookworm-runtime-only for more info
 RUN apk add --no-cache libc6-compat
 
-# Install pnpm globally
-RUN npm install -g pnpm
-
 # Set working directory to project root
 WORKDIR /app
 
-# Copy root package files
+# Install pnpm globally
+RUN npm install -g pnpm
+
+# Copy root package files for dependency installation
 COPY package.json pnpm-lock.yaml* ./
 COPY backend/package.json backend/
 
-# Install root dependencies (including workspace setup)
-RUN pnpm install --frozen-lockfile
+# Copy pnpm-workspace.yaml if it exists
+COPY pnpm-workspace.yaml* ./
 
-# Copy all source code
-COPY . .
-
-# Create logs directory for backend
-RUN mkdir -p backend/logs
+# Install all dependencies (including workspace setup)
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 # Builder stage: where the Next.js build happens
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Install pnpm globally
+RUN npm install -g pnpm
+
+# Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/backend/node_modules ./backend/node_modules
+
+# Copy all source code and configuration
 COPY . .
 
-# Build the project and its dependencies
-RUN pnpm build
+# Build the Next.js frontend
+RUN pnpm run build
 
 # Runner stage: production image with built artifacts
 FROM node:20-alpine AS runner
 WORKDIR /app
-ENV NODE_ENV production
 
-# Disable telemetry during runtime
-ENV NEXT_TELEMETRY_DISABLED 1
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-COPY --from=builder /app/public ./public
-# For standalone mode: copy the minimal server and static files
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+# Install pnpm globally (avoids runtime corepack download)
+RUN npm install -g pnpm
+
+# Set production environment
+ENV NODE_ENV=production
+
+# Disable Next.js telemetry
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Create non-root user early
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copy package files for production install (including workspaces)
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
+COPY --from=builder /app/pnpm-workspace.yaml* ./
+COPY --from=builder /app/backend/package.json ./backend/
+
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/ ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Copy entire backend directory with all its files
 COPY --from=builder --chown=nextjs:nodejs /app/backend ./backend
+COPY --from=deps --chown=nextjs:nodejs /app/backend/node_modules ./backend/node_modules
+RUN cd /app/backend && pnpm install --prod --frozen-lockfile
+
+# Switch to non-root user
 USER nextjs
 
 # Expose frontend port (Next.js)
 EXPOSE 3000
-ENV PORT=3000
-# Start all three services concurrently
-CMD ["pnpm", "run", "start:full"]
 
+# Expose backend API port
+EXPOSE 3001
+
+# Health check for backend API
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --start-interval=5s --retries=3 \
+  CMD curl -f http://localhost:3001/health || exit 1
+
+# Start all three services concurrently (frontend, backend server, cron)
+# Use exec form to run pnpm directly (fixes PATH issues for .bin scripts if needed)
+CMD ["pnpm", "run", "start:full"]

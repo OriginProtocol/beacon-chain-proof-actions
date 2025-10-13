@@ -8,8 +8,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "run-cron": "node src/scripts/run-cron.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "run-cron": "node src/scripts/run-cron.js"
   },
   "dependencies": {
     "@chainsafe/bls": "^8.2.0",

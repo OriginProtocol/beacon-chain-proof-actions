@@ -5,14 +5,14 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node server.js",
     "lint": "eslint",
     "run-cron": "cd backend && pnpm run run-cron",
     "backend:dev": "cd backend && pnpm run dev",
     "backend:start": "cd backend && pnpm start",
     "backend:install": "cd backend && pnpm install",
     "dev:full": "concurrently \"pnpm run backend:dev\" \"pnpm run dev\"",
-    "start:full": "concurrently \"pnpm run backend:start\" \"pnpm start\""
+    "start:full": "(cd backend && pnpm start) & (cd backend && pnpm run run-cron) & pnpm start & wait"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.10",

@@ -11,12 +11,17 @@ services:
     environment:
       - NODE_ENV=development
       - NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/backend/node_modules
-      - ./dev.env:/app/.env
-      - ./backend/dev.env:/app/backend/.env
+      - PG_HOST=postgres
+      - PG_USER=postgres
+      - PG_PASSWORD=password
+      - PG_DATABASE=automated_actions
+      - PG_PORT=5432
+      - PG_SSL=false
+    env_file:
+      #- .env.prod  # Prod env file (git-ignored; contains non-sensitive prod vars)
+      - .env
+    #secrets:
+    #  - app_secret_key  # Example: Add if your app needs sensitive vars like API keys
     restart: unless-stopped
     depends_on:
       - postgres
@@ -29,13 +34,19 @@ services:
       - POSTGRES_DB=automated_actions
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-    ports:
-      - "5432:5432"
+    # secrets:
+    #   - postgres_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     networks:
       - app-network
+
+#secrets:
+  # postgres_password:
+  #   file: ./secrets/postgres_password.txt  # Git-ignored file with password
+  #app_secret_key:
+  #  file: ./secrets/app_secret_key.txt  # Example: Git-ignored file for app secrets
 
 volumes:
   postgres_data:
