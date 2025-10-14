@@ -54,7 +54,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # Create non-root user early
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs \
+    adduser --system --uid 1001 nextjs && \
     chown -R nextjs:nodejs /app
 
 # Copy package files for production install (including workspaces)
