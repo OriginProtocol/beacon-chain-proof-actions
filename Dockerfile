@@ -53,7 +53,6 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Copy package files for production install (including workspaces)
-COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/pnpm-workspace.yaml* ./
 COPY --from=builder /app/backend/package.json ./backend/

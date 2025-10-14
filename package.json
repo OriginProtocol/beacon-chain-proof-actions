@@ -12,7 +12,11 @@
     "backend:start": "cd backend && pnpm start",
     "backend:install": "cd backend && pnpm install",
     "dev:full": "concurrently \"pnpm run backend:dev\" \"pnpm run dev\"",
-    "start:full": "(cd backend && pnpm start) & (cd backend && pnpm run run-cron) & pnpm start & wait"
+    "start:full": "(cd backend && pnpm start) & (cd backend && pnpm run run-cron) & pnpm start & wait",
+    "build-docker-hoodi": "pnpm docker-hoodi --build",
+    "build-docker-mainnet": "pnpm docker-mainnet --build",
+    "docker-hoodi": "docker-compose -f docker-compose.yml -f docker-compose.hoodi.yml --env-file .env.hoodi up",
+    "docker-mainnet": "docker-compose -f docker-compose.yml -f docker-compose.mainnet.yml -env-file .env.mainnet up"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.10",

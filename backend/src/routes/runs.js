@@ -27,7 +27,6 @@ router.get('/', async (c) => {
     // Fetch runs
     const runsResult = await db.query(runsQuery, params);
 
-    console.log("runs.rows", runsResult.rows.length);
     return c.json({ runs: runsResult.rows, total });
   } catch (error) {
     console.error('API error:', error);
