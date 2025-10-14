@@ -22,6 +22,10 @@ RUN id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+ARG NEXT_PUBLIC_BACKEND_URL
+RUN echo "printing NEXT_PUBLIC_BACKEND_URL value"
+RUN echo $NEXT_PUBLIC_BACKEND_URL
+
 # Install pnpm globally
 RUN npm install -g pnpm
 

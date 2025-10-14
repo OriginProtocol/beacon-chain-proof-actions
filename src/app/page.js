@@ -59,6 +59,7 @@ export default function Home() {
   const [selectedRun, setSelectedRun] = useState(null); // Selected run details
   const [walletInfo, setWalletInfo] = useState(null); // Wallet info: {address, balance, etherscanLink}
 
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
   // Job trigger handler
   const handleTriggerJob = async (jobName) => {
@@ -66,7 +67,6 @@ export default function Home() {
     setAlert(null);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
       const response = await fetch(`${backendUrl}/api/trigger-job`, {
         method: 'POST',
         headers: {
@@ -136,7 +136,6 @@ export default function Home() {
   async function fetchRuns() {
     setLoading(true);
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
       let url = `${backendUrl}/api/runs?page=${paginationModel.page + 1}&limit=${paginationModel.pageSize}`;
       if (selectedJobName) {
         url += `&job_name=${encodeURIComponent(selectedJobName)}`;
@@ -157,7 +156,6 @@ export default function Home() {
   useEffect(() => {
     async function fetchWalletInfo() {
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
         const res = await fetch(`${backendUrl}/api/wallet-info`);
         if (!res.ok) throw new Error('Failed to fetch wallet info');
         const data = await res.json();
@@ -173,7 +171,6 @@ export default function Home() {
   useEffect(() => {
     async function fetchJobNames() {
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
         const res = await fetch(`${backendUrl}/api/job-names`);
         if (!res.ok) throw new Error('Failed to fetch job names');
         const { jobNames: data } = await res.json();
