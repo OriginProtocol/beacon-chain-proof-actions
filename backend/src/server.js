@@ -11,14 +11,7 @@ const PORT = process.env.API_PORT || 3001;
 
 // Middleware
 app.use('/*', cors({
-  origin: (origin, c) => {
-    console.log('Requested Origin:', origin);  // Log to check what’s incoming
-    console.log('What is the env var process.env.FRONTEND_URL:', process.env.FRONTEND_URL);  // Log to check what’s incoming
-    console.log("process.env.FRONTEND_URL matches", process.env.FRONTEND_URL === origin);
-
-    return origin;  // Reflects back the origin for testing (secure only if you trust sources)
-  },
-  //origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   allowMethods: ['GET', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization']
 }));
