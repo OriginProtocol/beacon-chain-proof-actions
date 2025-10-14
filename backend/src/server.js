@@ -7,7 +7,7 @@ const { getLastSuccessfulJobs } = require('./lib/db');
 
 const app = new Hono();
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.API_PORT || 3001;
 
 // Middleware
 app.use('*', cors({
