@@ -59,7 +59,8 @@ COPY --from=builder /app/backend/package.json ./backend/
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/ ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# TODO: uncomment once we have any public assets
+# COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Copy entire backend directory with all its files
 COPY --from=builder --chown=nextjs:nodejs /app/backend ./backend
