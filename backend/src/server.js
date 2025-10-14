@@ -10,8 +10,10 @@ const app = new Hono();
 const PORT = process.env.API_PORT || 3001;
 
 // Middleware
-app.use('*', cors({
+app.use('/*', cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  allowMethods: ['GET', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
 
