@@ -255,6 +255,10 @@ export default function Home() {
           {walletInfo && (
             <Card variant="outlined" sx={{ mb: 2 }}>
               <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  {`${walletInfo.type == 'wallet' ? 'Wallet' : 'Defender'} Signer`}
+                </Typography>
+                <Divider />
                 <Typography variant="subtitle1">
                   Signer: {`${walletInfo.address.substring(0,6)}...${walletInfo.address.substring(walletInfo.address.length - 4,walletInfo.address.length)}`}
                 </Typography>

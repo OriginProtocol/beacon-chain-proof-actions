@@ -1,15 +1,11 @@
 const ethers = require("ethers");
-const { isMainnet, getDefaultProvider } = require('./utils');
+const { getDefaultProvider } = require('./utils');
 
 const getDefenderSigner = async () => {
   const { Relayer } = await import('@openzeppelin/defender-sdk-relay-signer-client');
-  const _isMainnet = await isMainnet();
-  const apiKey = _isMainnet
-    ? process.env.DEFENDER_API_KEY
-    : process.env.HOODI_DEFENDER_API_KEY;
-  const apiSecret = _isMainnet
-    ? process.env.DEFENDER_API_SECRET
-    : process.env.HOODI_DEFENDER_API_SECRET;
+  
+  const apiKey = process.env.DEFENDER_API_KEY;
+  const apiSecret = process.env.DEFENDER_API_SECRET;
 
   if (!apiKey || !apiSecret) {
     console.warn('⚠️ DEFENDER_API_KEY or DEFENDER_API_SECRET is not set in environment variables.');
@@ -21,9 +17,15 @@ const getDefenderSigner = async () => {
   const provider = client.getProvider({ ethersVersion: 'v6' });
   const speed = 'fast';
   const signer = await client.getSigner(provider, { speed, ethersVersion: 'v6' });
+  const address = await signer.getAddress();
+  const balance = await provider.getBalance(address);
+
+  if (balance < ethers.parseEther('0.001')) {
+    console.warn('⚠️  Low balance - may not have enough ETH for gas');
+  }
 
   console.log(
-    `Using Defender Relayer account ${await signer.getAddress()} with key ${apiKey} and speed ${speed}`
+    `Using Defender Relayer account ${address} with key ${apiKey} and speed ${speed}`
   );
   return signer;
 };
@@ -44,10 +46,18 @@ const getWalletSigner = async () => {
 };
 
 const getDefaultSigner = async () => {
+  let signer, type, address;
   if (process.env.TASK_EXECUTOR_PRIVATE_KEY) {
-    return getWalletSigner();
+    signer = await getWalletSigner();
+    type = 'wallet';
+    address = signer.address;
+  } else {
+    signer = await getDefenderSigner();
+    type = 'defender';
+    address = signer.address;
   }
-  return getDefenderSigner();
+
+  return { signer, type, address };
 };
 
 module.exports = {

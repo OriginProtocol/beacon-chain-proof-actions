@@ -95,17 +95,16 @@ const environmentVariableCheck = async (isDryRun) => {
 
 const getContractsAndConstants = async () => {
   // Setup strategy contract 
-  const wallet = await getDefaultSigner();
+  const { signer: wallet } = await getDefaultSigner();
   let strategyaAddress,strategyViewAddress, beaconChainGenesisTime, beaconProvider
 
+  strategyaAddress = process.env.STAKING_STRATEGY_PROXY;
+  strategyViewAddress = process.env.STAKING_STRATEGY_VIEW;
+
   if (await isMainnet()) {
-    strategyaAddress = process.env.STAKING_STRATEGY_PROXY;
-    strategyViewAddress = process.env.STAKING_STRATEGY_VIEW;
     beaconChainGenesisTime = beaconChainGenesisTimeMainnet;
     beaconProvider = `https://beaconcha.in/api/v1/`;
   } else {
-    strategyaAddress = process.env.STAKING_STRATEGY_HOODI_PROXY;
-    strategyViewAddress = process.env.STAKING_STRATEGY_HOODI_VIEW;
     beaconChainGenesisTime = beaconChainGenesisTimeHoodi;
     beaconProvider = `https://hoodi.beaconcha.in/api/v1/`;
   }
