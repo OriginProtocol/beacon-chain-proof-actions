@@ -16,7 +16,7 @@ COPY backend/package.json backend/
 COPY pnpm-workspace.yaml* ./
 
 # Install all dependencies (including workspace setup)
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 # Builder stage: where the Next.js build happens
 FROM node:20-alpine AS builder
