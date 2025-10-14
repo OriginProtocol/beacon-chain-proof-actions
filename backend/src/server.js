@@ -13,8 +13,7 @@ const PORT = process.env.API_PORT || 3001;
 app.use('/*', cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   allowMethods: ['GET', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
+  allowHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Import routes
