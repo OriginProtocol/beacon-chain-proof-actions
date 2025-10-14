@@ -54,12 +54,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # Create non-root user early
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+    adduser --system --uid 1001 nextjs \
+    chown -R nextjs:nodejs /app
 
 # Copy package files for production install (including workspaces)
 COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/pnpm-workspace.yaml* ./
-COPY --from=builder /app/backend/package.json ./backend/
+COPY --from=builder --chown=nextjs:nodejs /app/backend/package.json ./backend/
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/ ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
@@ -69,6 +70,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copy entire backend directory with all its files
 COPY --from=builder --chown=nextjs:nodejs /app/backend ./backend
 COPY --from=deps --chown=nextjs:nodejs /app/backend/node_modules ./backend/node_modules
+
 RUN cd /app/backend && pnpm install --prod --frozen-lockfile
 
 # Switch to non-root user
