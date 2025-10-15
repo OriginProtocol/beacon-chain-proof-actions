@@ -3,7 +3,8 @@ module.exports = [
     // names should have no spaces or special characters
     name: 'snap_balances',
     //schedule: '0 15 * * *', // 3:00 PM daily
-    schedule: '*/20 * * * *', // every 10 minutes
+    //schedule: '*/20 * * * *', // every 10 minutes
+    schedule: '0 3 * * *', // 3:00 AM daily
     command: 'pwd && node src/tasks/snapBalances.js',
   },
   {
