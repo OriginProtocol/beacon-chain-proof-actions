@@ -173,7 +173,7 @@ const configClient = async () => {
   console.log(`BEACON_PROVIDER_URL: ${process.env.BEACON_PROVIDER_URL}`);
   const baseUrl = process.env.BEACON_PROVIDER_URL;
 
-  const client = await getClient({ baseUrl, timeoutMs: 60000 }, { config });
+  const client = await getClient({ baseUrl, timeoutMs: 120000 }, { config });
 
   return client;
 };
