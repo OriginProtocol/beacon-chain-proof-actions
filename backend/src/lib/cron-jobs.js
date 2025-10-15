@@ -2,16 +2,14 @@ module.exports = [
   {
     // names should have no spaces or special characters
     name: 'snap_balances',
-    //schedule: '0 15 * * *', // 3:00 PM daily
-    //schedule: '*/20 * * * *', // every 10 minutes
-    schedule: '0 3 * * *', // 3:00 AM daily
+    schedule: '0 15 * * *', // 3:00 PM daily
     command: 'pwd && node src/tasks/snapBalances.js',
   },
   {
     // names should have no spaces or special characters
     name: 'verify_balances',
     //schedule: '3 15 * * *', // 3:03 PM daily
-    schedule: '*/20 * * * *', // every 10 minutes
+    schedule: '*/20 * * * *', // every 20 minutes
     command: 'node src/tasks/verifyBalances.js',
   },
   {
