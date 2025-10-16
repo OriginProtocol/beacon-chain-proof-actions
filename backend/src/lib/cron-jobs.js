@@ -8,8 +8,7 @@ module.exports = [
   {
     // names should have no spaces or special characters
     name: 'verify_balances',
-    //schedule: '3 15 * * *', // 3:03 PM daily
-    schedule: '*/20 * * * *', // every 20 minutes
+    schedule: '3 15 * * *', // 3:03 PM daily
     command: 'node src/tasks/verifyBalances.js',
   },
   {
