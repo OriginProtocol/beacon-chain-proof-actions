@@ -174,7 +174,7 @@ const configClient = async () => {
   const baseUrl = process.env.BEACON_PROVIDER_URL;
 
   // 20 minutes timeout for Ralway network throttling reasons
-  const client = await getClient({ baseUrl, timeoutMs: 1200000 }, { config });
+  const client = await getClient({ baseUrl, globalInit: { timeoutMs: 1200000 } }, { config });
 
   return client;
 };
