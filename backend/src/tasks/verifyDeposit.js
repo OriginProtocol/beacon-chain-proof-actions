@@ -70,7 +70,7 @@ async function verifyDepositStandalone() {
   if (processedDeposits.length > 0) {
     const { receipt } = await executeTransaction(stakingStrategy.snapBalances, [], argv.dryRun);
   } else {
-    console.log(`There are ${pendingDeposits} pending deposits but none have been processed on the beacon chain yet`);
+    console.log(`There are ${pendingDeposits.length} pending deposits but none have been processed on the beacon chain yet`);
   }
 
   for (const deposit of processedDeposits) {
