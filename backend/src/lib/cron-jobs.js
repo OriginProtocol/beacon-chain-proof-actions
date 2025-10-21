@@ -14,8 +14,7 @@ module.exports = [
   {
     // names should have no spaces or special characters
     name: 'verify_deposit',
-    //schedule: '30 9,14,19 * * *', // 9:30 AM, 2:30 PM, 7:30 PM daily
-    schedule: '*/10 * * * *', // every 10 minutes
+    schedule: '30 9,14,19 * * *', // 9:30 AM, 2:30 PM, 7:30 PM daily
     command: 'node src/tasks/verifyDeposit.js',
   },
   {
