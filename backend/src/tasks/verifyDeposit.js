@@ -98,9 +98,9 @@ async function verifyDeposit(deposit, depositProcessedSlot) {
   const strategyValidator = await stakingStrategy.validator(pubKeyHash);
   strategyValidatorIndex = Number(strategyValidator.index);
 
-  if (strategyValidator.state !== 3n)
+  if (strategyValidator.state !== 3n && strategyValidator.state !== 4n)
     throw Error(
-      `Validator with pub key hash ${pubKeyHash} with index ${strategyValidatorIndex} is not VERIFIED. Status: ${strategyValidator.state}`
+      `Validator with pub key hash ${pubKeyHash} with index ${strategyValidatorIndex} is not VERIFIED/ACTIVE. Status: ${strategyValidator.state}`
     );
 
   strategyDepositSlot = slot;
